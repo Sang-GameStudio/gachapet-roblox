@@ -1,0 +1,17 @@
+# Roblox Studio temporary files
+*.rbxl.lock
+*.rbxlx.lock
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Rojo temporary files
+.rojo/
+
+# Loại bỏ file thực thi binary của Rojo
+rojo.exe
+
+# Loại bỏ các file build/template nhị phân của Roblox Studio
+*.rbxl
+*.rbxlx
