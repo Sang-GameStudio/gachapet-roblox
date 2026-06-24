@@ -39,3 +39,35 @@ File này ghi nhận tất cả các công việc, công nghệ áp dụng và k
 - **Physics Constraint Objects (`AlignPosition`, `AlignOrientation`)**: Giải pháp di chuyển mượt mà, tự động né va chạm thông qua engine vật lý C++ tích hợp của Roblox.
 - **Weighted Random Algorithm (Thuật toán xác suất có trọng số)**: Cơ chế tính toán tỷ lệ mở trứng gacha Common 80% / Rare 15% / Legendary 5% bằng cách tính tổng trọng số và nội suy khoảng.
 - **Session Caching & BindToClose**: Kỹ thuật lưu trữ tạm thời data người chơi trên RAM server để giảm tải request lên cloud DataStore, đồng thời lưu đè an toàn khi tắt server đột ngột.
+
+---
+
+### 🔒 Task 2: Hiện Thực Hóa Backend & DataStore (Logic Server & Data Persistence)
+* **Ngày thực hiện:** 24/06/2026
+
+#### 1. Công việc đã thực hiện:
+- **Xây dựng module xác suất [GachaModule.luau](file:///project/src/shared/GachaModule.luau):**
+  - Khai báo pool Pet khớp 100% với cấu trúc Assets trong ReplicatedStorage của người chơi (Common: `Common1` -> `Common5` với trọng số 16; Rare: `Rate1` -> `Rate3` với trọng số 5; Legendary: `Legendary1` với trọng số 5).
+  - Implement thuật toán Weighted Random trong `GachaModule.RollPet()` để tính toán pet trúng giải dựa trên tổng trọng số.
+- **Xây dựng trình quản lý dữ liệu [DataManager.server.luau](file:///project/src/server/DataManager.server.luau):**
+  - Kết nối và thao tác với Roblox `DataStoreService` để lưu/tải dữ liệu bằng `UpdateAsync` & `GetAsync` có bọc `pcall`.
+  - Thiết lập RAM cache `sessionData` trên Server, lưu vết Coins, Inventory và EquippedPet cho từng người chơi (gán mặc định là Pet `Common1` thay vì `Common_Dog`).
+  - Tạo `leaderstats` và IntValue `Coins` để tự động hiển thị số xu của player lên Leaderboard UI mặc định của Roblox Studio.
+  - Đăng ký `game:BindToClose()` để lưu lại toàn bộ dữ liệu người chơi đang online khi Server tắt hoặc khi ngắt chế độ chơi thử.
+- **Xây dựng logic bám đuôi và gacha tại [GameLogic.server.luau](file:///project/src/server/GameLogic.server.luau):**
+  - Kết nối và đăng ký lắng nghe các RemoteEvents/RemoteFunctions (`OpenEggEvent`, `EquipPetEvent`, `GetInventory`).
+  - Xử lý mua trứng an toàn: Server tự động kiểm tra xu của người chơi trên Server RAM (không tin cậy Client), trừ tiền an toàn, thực hiện quay gacha thông qua `GachaModule.RollPet()`, lưu pet mới vào inventory, và trả kết quả về cho Client chạy hiệu ứng.
+  - Tích hợp Dictionary debounce `lastPurchaseTime[userId]` trên Server để chặn spam RemoteEvent từ hacker (cooldown 0.8s).
+  - Viết logic trang bị Pet: Xác minh quyền sở hữu Pet, tự động định tuyến đường dẫn tìm kiếm model động trong `ReplicatedStorage.Assets.Pets.[Common/Rate/Legendary]` để tìm chính xác Pet, clone ra Workspace, cấu hình physics constraints bám đuôi (`AlignPosition` & `AlignOrientation`) có gia tốc mượt mà, tắt va chạm và set `SetNetworkOwner` về máy Client để khử lag.
+  - Tự động spawn lại Pet đang trang bị khi người chơi hồi sinh (`CharacterAdded`).
+
+#### 2. Công nghệ áp dụng:
+- **Công cụ**: Rojo, Roblox Studio.
+- **Roblox API**: DataStoreService, Players, ReplicatedStorage, Workspace, RunService, Physics Constraints (`AlignPosition`, `AlignOrientation`, `Attachment`).
+- **Network Boundaries**: RemoteEvent (`OpenEggEvent`, `EquipPetEvent`), RemoteFunction (`GetInventory`).
+
+#### 3. Kiến thức áp dụng:
+- **Physics Constraint-based Follower**: Dịch chuyển mô hình vật lý dựa trên Attachments giúp Pet đi theo người chơi có quán tính rất đẹp mắt và tối ưu hiệu năng C++.
+- **Client-Side Physics Ownership (Network Owner)**: Chuyển quyền xử lý vật lý của Pet sang Client giúp giảm tải server và triệt tiêu độ trễ mạng, tạo ra chuyển động cực kỳ mượt mà.
+- **Secure Remote Validation**: Nguyên tắc an toàn hệ thống game, không tin tưởng Client, thực hiện kiểm tra số dư, trừ tiền, và cooldown hoàn toàn ở phía Server.
+
