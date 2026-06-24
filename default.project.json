@@ -5,6 +5,15 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "OpenEggEvent": {
+        "$className": "RemoteEvent"
+      },
+      "EquipPetEvent": {
+        "$className": "RemoteEvent"
+      },
+      "GetInventory": {
+        "$className": "RemoteFunction"
       }
     },
     "ServerScriptService": {
