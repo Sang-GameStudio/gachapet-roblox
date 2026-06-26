@@ -71,3 +71,36 @@ File này ghi nhận tất cả các công việc, công nghệ áp dụng và k
 - **Client-Side Physics Ownership (Network Owner)**: Chuyển quyền xử lý vật lý của Pet sang Client giúp giảm tải server và triệt tiêu độ trễ mạng, tạo ra chuyển động cực kỳ mượt mà.
 - **Secure Remote Validation**: Nguyên tắc an toàn hệ thống game, không tin tưởng Client, thực hiện kiểm tra số dư, trừ tiền, và cooldown hoàn toàn ở phía Server.
 
+---
+
+### 🎨 Task 3: Hiện Thực Hóa Frontend (UI & Client-Server Network)
+* **Ngày thực hiện:** 26/06/2026
+
+#### 1. Công việc đã thực hiện:
+- **Xây dựng trình điều khiển giao diện [UIController.client.luau](file:///project/src/client/UIController.client.luau):**
+  - **Quản lý đóng/mở Frame**: Đồng bộ nút bấm `HUD.ShopBtn` và `HUD.InvBtn` để toggle ẩn/hiển thị bảng điều khiển tương ứng (`ShopFrame`, `InventoryFrame`). Sử dụng `TweenService` để phóng to/thu nhỏ UI mượt mà dựa trên kích thước gốc cấu hình trong Studio để tăng trải nghiệm người dùng (UX/Game Feel).
+  - **Tải và Hiển thị Inventory**:
+    - Sửa lại đường dẫn `PetSlotTemplate` trỏ đúng vào thư mục `ReplicatedStorage.Templates.PetSlotTemplate`.
+    - Gọi RemoteFunction `GetInventory` để lấy thông tin Coins, Inventory danh sách Pet và Pet đang trang bị từ Server.
+    - Duyệt danh sách pet, nhân bản `PetSlotTemplate` đặt vào `PetScrollingFrame`.
+    - Viết logic tìm kiếm vị trí model chính xác thông qua hàm quét đệ quy thư mục `ReplicatedStorage.Assets.Pets.[Common/Rate/Legendary]`.
+    - Sử dụng **ViewportFrame (`PetView`)** và Camera ảo để render Pet 3D lên ô UI 2D. Tích hợp thuật toán lượng giác xoay Camera 360 độ quanh tâm Bounding Box của Pet với tốc độ `120 độ/giây` giúp Pet quay nhanh và mượt mà hơn trên mọi màn hình. Giải phóng sự kiện (disconnect) khi ô vật phẩm bị hủy để tránh rò rỉ bộ nhớ.
+  - **Logic nút trang bị (EquipBtn)**:
+    - Kiểm tra xem Pet hiển thị có trùng khớp với `EquippedPet` không.
+    - Cập nhật text hiển thị (`Equip` / `Unequip`) và thay đổi màu nền nút bấm trực quan.
+    - Khi bấm nút, bắn tín hiệu `EquipPetEvent:FireServer()` lên Server để cập nhật và tự động gọi refresh UI sau 0.2 giây.
+  - **Logic mua trứng (BuyEggBtn)**:
+    - Bấm nút `BuyEggBtn` trong ShopFrame sẽ bắn tín hiệu `OpenEggEvent:FireServer("BasicEgg")`.
+    - Lắng nghe `OpenEggEvent.OnClientEvent` để nhận thông tin pet mới mở được, hiển thị thông báo ra log và tự động refresh lại hòm đồ và Coins HUD.
+
+#### 2. Công nghệ áp dụng:
+- **Roblox UI Elements**: ScreenGui, Frame, ScrollingFrame, ViewportFrame, TextButton, TextLabel, UIAspectRatioConstraint, UIGridLayout.
+- **Client APIs**: TweenService, RunService.RenderStepped, Camera, Instance.new, GetBoundingBox, PivotTo.
+- **Network Boundaries**: RemoteEvent (`OpenEggEvent`, `EquipPetEvent`), RemoteFunction (`GetInventory`).
+
+#### 3. Kiến thức áp dụng:
+- **3D-in-2D Viewport Rendering**: Kỹ thuật chiếu mô hình 3D lên giao diện phẳng bằng ViewportFrame, tự động tính toán tiêu cự và khoảng cách camera dựa trên Bounding Box của mô hình để hiển thị Pet cân đối trong khung hình.
+- **Tween UI Animation**: Sử dụng EasingStyle (như `Back.Out`) giúp giao diện chuyển động sinh động, tạo phản hồi thao tác tốt (Game Feel).
+- **Client Memory Leak Prevention**: Nguyên tắc lập trình Roblox, tự động dọn dẹp các sự kiện lặp khung hình (`RenderStepped`) khi các Instance UI cha tương ứng bị phá hủy.
+
+
