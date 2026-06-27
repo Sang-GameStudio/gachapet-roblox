@@ -23,9 +23,11 @@ local CoinsLabel = HUD:WaitForChild("CoinsLabel")
 
 local ShopFrame = MainGui:WaitForChild("ShopFrame")
 local BuyEggBtn = ShopFrame:WaitForChild("BuyEggBtn")
+local BtnCloseShop = ShopFrame:WaitForChild("BtnCloseShop")
 
 local InventoryFrame = MainGui:WaitForChild("InventoryFrame")
 local PetScrollingFrame = InventoryFrame:WaitForChild("PetScrollingFrame")
+local BtnCloseInventory = InventoryFrame:WaitForChild("BtnCloseInventory")
 
 -- Sửa lại đường dẫn PetSlotTemplate nằm trong thư mục Templates
 local Templates = ReplicatedStorage:WaitForChild("Templates")
@@ -92,7 +94,7 @@ local function renderPetToSlot(slotFrame, petName)
 		
 		-- 2. Khởi tạo Camera ảo chuyên dụng
 		local cam = Instance.new("Camera")
-		cam.FieldOfView = 35 -- FOV hẹp giúp camera zoom cận cảnh nhìn rõ Pet hơn
+		cam.FieldOfView = 50 -- FOV hẹp giúp camera zoom cận cảnh nhìn rõ Pet hơn
 		viewport.CurrentCamera = cam
 		cam.Parent = viewport
 		
@@ -119,7 +121,7 @@ local function renderPetToSlot(slotFrame, petName)
 			local rad = math.rad(currentAngle)
 			
 			-- Thuật toán lượng giác quay camera xung quanh vị trí trung tâm của Pet
-			local radius = modelSize.Magnitude * 1.2 -- Khoảng cách camera dựa theo kích thước Pet
+			local radius = modelSize.Magnitude * 1.5 -- Khoảng cách camera dựa theo kích thước Pet
 			local height = modelSize.Y * 0.5 -- Chiều cao đặt camera (nhìn xéo nhẹ từ trên xuống)
 			local offsetX = math.sin(rad) * radius
 			local offsetZ = math.cos(rad) * radius
@@ -135,60 +137,164 @@ end
 --[[
 	Hàm làm mới và đồng bộ dữ liệu giao diện túi đồ từ Server
 ]]
+-- Bảng lưu trữ kết nối sự kiện click nút trang bị để dọn dẹp tránh trùng lặp/rò rỉ bộ nhớ
+local buttonConnections = {}
+
+--[[
+	Hàm làm mới và đồng bộ dữ liệu giao diện túi đồ từ Server
+	(Đã tối ưu hóa: Giữ nguyên các ô cũ để không bị reset vòng quay mô hình 3D)
+]]
 local function refreshInventoryUI()
-	-- Xóa toàn bộ các ô Pet cũ đang hiển thị (giữ lại UIGridLayout)
+	-- Gửi RemoteFunction lên Server lấy dữ liệu an toàn
+	local playerData = GetInventory:InvokeServer()
+	if not playerData then return end
+	
+	-- Cập nhật Coins hiển thị trên HUD
+	CoinsLabel.Text = "Coins: " .. tostring(playerData.Coins)
+	
+	-- Lấy thông tin con Pet hiện tại đang được trang bị từ Server
+	local currentlyEquipped = playerData.EquippedPet
+	local inventory = playerData.Inventory or {}
+	
+	-- 1. LẤY DANH SÁCH CÁC Ô SLOT HIỆN ĐANG CÓ TRÊN GIAO DIỆN
+	local existingSlots = {}
 	for _, child in ipairs(PetScrollingFrame:GetChildren()) do
-		if child:IsA("GuiObject") and child.Name ~= "UIGridLayout" then 
-			child:Destroy() 
+		-- Kiểm tra đúng là ô Frame chứa Pet (bỏ qua UIGridLayout, UIPadding...)
+		if child:IsA("Frame") then
+			table.insert(existingSlots, child)
 		end
 	end
 	
-	-- Gửi RemoteFunction lên Server lấy dữ liệu an toàn
-	local playerData = GetInventory:InvokeServer()
-	if playerData then
-		-- Cập nhật Coins hiển thị trên HUD
-		CoinsLabel.Text = "Coins: " .. tostring(playerData.Coins)
+	-- 2. DUYỆT QUA TÚI ĐỒ MỚI: THIẾU THÌ TẠO THÊM, CÓ SẴN THÌ DÙNG LẠI
+	for i, petName in ipairs(inventory) do
+		local slot = existingSlots[i]
+		local isNewSlot = false
 		
-		if playerData.Inventory then
-			-- Tạo các ô vật phẩm tương ứng với danh sách sở hữu
-			for _, petName in ipairs(playerData.Inventory) do
-				local newSlot = PetSlotTemplate:Clone()
-				newSlot.Name = petName
-				newSlot.Visible = true
-				newSlot.Parent = PetScrollingFrame
+		if not slot then
+			-- Nếu số ô hiện tại ít hơn số Pet thực tế -> Clone thêm ô mới tinh
+			slot = PetSlotTemplate:Clone()
+			slot.Parent = PetScrollingFrame
+			isNewSlot = true
+		end
+		
+		slot.Name = petName
+		slot.Visible = true
+		
+		-- ✨ ĐIỀU KIỆN VÀNG: Chỉ nạp lại mô hình 3D nếu là ô mới tạo hoặc chưa có PetView
+		-- Giúp giữ nguyên ViewportFrame cũ đang xoay lơ lửng, không bị reset góc quay!
+		local viewport = slot:FindFirstChild("PetView")
+		if isNewSlot or not viewport or not viewport:FindFirstChild(petName) then
+			renderPetToSlot(slot, petName)
+		end
+		
+		-- 🎯 CẬP NHẬT TRẠNG THÁI TRANG BỊ TRỰC TIẾP
+		local border = slot:FindFirstChild("Border")
+		local tag = slot:FindFirstChild("EquippedTag")
+		
+		if petName == currentlyEquipped then
+			if border then border.Enabled = true end
+			if tag then tag.Visible = true end
+		else
+			if border then border.Enabled = false end
+			if tag then tag.Visible = false end
+		end
+		
+		-- ⚡ LÀM SẠCH VÀ GẮN LẠI SỰ KIỆN CLICK (Dùng cơ chế Disconnect thay vì Destroy nút giúp mượt mà hơn)
+		local equipBtn = slot:FindFirstChild("EquipBtn")
+		if equipBtn then
+			-- Nếu đã có kết nối cũ thì ngắt đi để tránh lặp sự kiện
+			if buttonConnections[slot] then
+				buttonConnections[slot]:Disconnect()
+			end
+			
+			buttonConnections[slot] = equipBtn.Activated:Connect(function()
+				if petName == currentlyEquipped then
+					EquipPetEvent:FireServer(nil)
+				else
+					EquipPetEvent:FireServer(petName)
+				end
 				
-				-- Vẽ 3D Pet lên ô vật phẩm
-				renderPetToSlot(newSlot, petName)
-				
-				-- Kiểm tra xem Pet này có đang được trang bị đi cùng người chơi không
-				local isEquipped = (playerData.EquippedPet == petName)
-				local equipBtn = newSlot:FindFirstChild("EquipBtn")
-				
-				if equipBtn then
-					-- Cập nhật chữ và màu nền nút bấm tương ứng trạng thái trang bị
-					if isEquipped then
-						equipBtn.Text = "Unequip"
-						equipBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Màu đỏ báo tháo trang bị
-					else
-						equipBtn.Text = "Equip"
-						equipBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100) -- Màu xanh báo trang bị
-					end
-					
-					-- Kết nối sự kiện bấm nút để gửi yêu cầu trang bị/tháo trang bị lên Server
-					equipBtn.Activated:Connect(function()
-						if isEquipped then
-							EquipPetEvent:FireServer(nil) -- Gửi nil để tháo trang bị
-						else
-							EquipPetEvent:FireServer(petName) -- Gửi tên pet để trang bị
-						end
-						
-						-- Đợi Server xử lý đồng bộ và vẽ lại UI
-						task.wait(0.2)
-						refreshInventoryUI()
-					end)
+				-- Đợi Server xử lý và đồng bộ trạng thái
+				task.wait(0.1)
+				refreshInventoryUI()
+			end)
+		end
+	end
+	
+	-- 3. DỌN DẸP CÁC Ô THỪA (Trường hợp người chơi vừa xóa bớt Pet hoặc bị giảm số lượng)
+	if #existingSlots > #inventory then
+		for i = #inventory + 1, #existingSlots do
+			local oldSlot = existingSlots[i]
+			if oldSlot then
+				-- Giải phóng kết nối nút bấm tương ứng trước khi xóa
+				if buttonConnections[oldSlot] then
+					buttonConnections[oldSlot]:Disconnect()
+					buttonConnections[oldSlot] = nil
+				end
+				oldSlot:Destroy()
+			end
+		end
+	end
+end
+
+--[[
+	Hàm vẽ mô hình Trứng 3D tĩnh vào ô EggView của Cửa hàng
+	(Cố định camera góc nghiêng, không chạy vòng lặp xoay tròn)
+]]
+local function renderEggToShop()
+	local eggView = ShopFrame:FindFirstChild("EggView")
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	
+	-- Quả trứng được lưu trực tiếp dưới Assets với tên là "Egg"
+	local eggModelTemplate = assets and assets:FindFirstChild("Egg")
+	
+	if eggView and eggModelTemplate then
+		-- 1. Dọn sạch các mô hình trứng hoặc camera cũ nếu có (giữ lại các UI constraint)
+		for _, child in ipairs(eggView:GetChildren()) do
+			if child:IsA("Model") or child:IsA("BasePart") or child:IsA("Camera") then
+				child:Destroy()
+			end
+		end
+		
+		-- 2. Clone mô hình quả trứng đặt vào ViewportFrame
+		local eggClone = eggModelTemplate:Clone()
+		eggClone.Parent = eggView
+		
+		-- Anchor toàn bộ các Part cấu thành quả trứng để tránh bị rơi tự do
+		if eggClone:IsA("BasePart") then
+			eggClone.Anchored = true
+		else
+			for _, part in ipairs(eggClone:GetDescendants()) do
+				if part:IsA("BasePart") then 
+					part.Anchored = true 
 				end
 			end
 		end
+		
+		-- 3. Khởi tạo Camera ảo cố định
+		local cam = Instance.new("Camera")
+		cam.FieldOfView = 45 -- Góc FOV vừa phải giúp quả trứng nhìn đầy đặn
+		eggView.CurrentCamera = cam
+		cam.Parent = eggView
+		
+		-- 4. Tính toán tiêu điểm dựa trên kích thước thực tế của quả trứng
+		local modelCFrame, modelSize
+		if eggClone:IsA("Model") then
+			modelCFrame, modelSize = eggClone:GetBoundingBox()
+		else
+			modelCFrame = eggClone.CFrame
+			modelSize = eggClone.Size
+		end
+		
+		local centerPos = modelCFrame.Position
+		local radius = modelSize.Magnitude * 1.3 -- Khoảng cách camera lùi ra xa vừa đủ ôm trọn quả trứng
+		
+		-- 🎯 ĐẶT CAMERA GÓC TĨNH CỐ ĐỊNH (KHÔNG DÙNG RENDERSTEPPED)
+		-- Đặt camera chếch về phía trước (trục Z) và hơi cao hơn tâm quả trứng một chút (trục Y)
+		cam.CFrame = CFrame.new(
+			centerPos + Vector3.new(0, modelSize.Y * 0.2, radius), 
+			centerPos -- Luôn khóa góc nhìn hướng thẳng vào tâm quả trứng
+		)
 	end
 end
 
@@ -210,6 +316,9 @@ local function toggleFrame(frame, originalSize)
 		-- Tải lại túi đồ khi mở Inventory
 		if frame == InventoryFrame then
 			refreshInventoryUI()
+		-- Tải mô hình trứng 3D tĩnh khi mở ShopFrame
+		elseif frame == ShopFrame then
+			renderEggToShop()
 		end
 	else
 		-- Tween thu nhỏ về 0 rồi ẩn đi
@@ -245,6 +354,46 @@ InvBtn.Activated:Connect(function()
 		end
 	end
 end)
+
+-- 🖲️ HIỆU ỨNG HOVER & PRESS CHỈ ĐỔI MÀU CHO NÚT ĐÓNG (KHÔNG SCALE)
+local function tweenCloseButtonColor(button, targetColor)
+	local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(button, tweenInfo, { ImageColor3 = targetColor }):Play()
+end
+
+-- Hàm thiết lập hiệu ứng Hover, Press và sự kiện đóng cho nút đóng
+local function setupCloseButtonEffects(button, closeFrame, originalSize)
+	-- 1. Khi di chuột vào (Hover) -> Nút hơi mờ/tối nhẹ đi một chút tinh tế
+	button.MouseEnter:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(235, 235, 235))
+	end)
+
+	-- 2. Khi rời chuột ra -> Trả về màu sắc ảnh gốc nguyên bản
+	button.MouseLeave:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(255, 255, 255))
+	end)
+
+	-- 3. Khi ấn chuột xuống (Press) -> Tối hẳn xuống để tạo hiệu ứng lún cơ học rõ rệt
+	button.MouseButton1Down:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(170, 170, 170))
+	end)
+
+	-- 4. Khi thả chuột ra -> Trả về màu đang Hover để chờ lượt tương tác tiếp theo
+	button.MouseButton1Up:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(235, 235, 235))
+	end)
+
+	-- 5. Kích hoạt hàm đóng khung tương ứng khi click
+	button.Activated:Connect(function()
+		if closeFrame.Visible then
+			toggleFrame(closeFrame, originalSize)
+		end
+	end)
+end
+
+-- Thiết lập hiệu ứng và sự kiện cho cả 2 nút đóng của Kho hàng và Cửa hàng
+setupCloseButtonEffects(BtnCloseInventory, InventoryFrame, inventoryFrameOriginalSize)
+setupCloseButtonEffects(BtnCloseShop, ShopFrame, shopFrameOriginalSize)
 
 -- Lắng nghe nút mua trứng trong Shop
 BuyEggBtn.Activated:Connect(function()
