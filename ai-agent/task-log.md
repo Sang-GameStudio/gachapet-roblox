@@ -78,18 +78,21 @@ File này ghi nhận tất cả các công việc, công nghệ áp dụng và k
 
 #### 1. Công việc đã thực hiện:
 - **Xây dựng trình điều khiển giao diện [UIController.client.luau](file:///project/src/client/UIController.client.luau):**
-  - **Quản lý đóng/mở Frame**: Đồng bộ nút bấm `HUD.ShopBtn` và `HUD.InvBtn` để toggle ẩn/hiển thị bảng điều khiển tương ứng (`ShopFrame`, `InventoryFrame`). Sử dụng `TweenService` để phóng to/thu nhỏ UI mượt mà dựa trên kích thước gốc cấu hình trong Studio để tăng trải nghiệm người dùng (UX/Game Feel).
-  - **Tải và Hiển thị Inventory**:
+  - **Quản lý đóng/mở Frame**: Đồng bộ nút bấm `HUD.ShopBtn`, `HUD.InvBtn` cùng các nút đóng `BtnCloseInventory` và `BtnCloseShop` để toggle ẩn/hiển thị các bảng điều khiển tương ứng. Sử dụng `TweenService` phóng to/thu nhỏ UI mượt mà dựa trên kích thước gốc cấu hình trong Studio để tăng trải nghiệm người dùng (UX/Game Feel). Tích hợp thêm các hiệu ứng phản hồi vi mô (micro-interactions) cho cả 2 nút đóng như Hover (di chuột vào mờ nhẹ `235, 235, 235`), Press (click xuống tối hẳn `170, 170, 170`), Release (thả chuột ra trả về màu Hover) chỉ đổi màu ảnh `ImageColor3` mà không đổi Scale để tạo cảm giác cơ học chân thực.
+  - **Tải và Hiển thị Inventory (Đồng bộ nâng cao)**:
     - Sửa lại đường dẫn `PetSlotTemplate` trỏ đúng vào thư mục `ReplicatedStorage.Templates.PetSlotTemplate`.
     - Gọi RemoteFunction `GetInventory` để lấy thông tin Coins, Inventory danh sách Pet và Pet đang trang bị từ Server.
-    - Duyệt danh sách pet, nhân bản `PetSlotTemplate` đặt vào `PetScrollingFrame`.
+    - **Tối ưu hóa tái sử dụng ô vật phẩm**: Thay vì xóa toàn bộ và vẽ lại gây reset góc quay camera của ViewportFrame, hệ thống tự động giữ lại và tái sử dụng các ô cũ, chỉ vẽ mới nếu là ô mới tạo hoặc thay đổi loài Pet.
     - Viết logic tìm kiếm vị trí model chính xác thông qua hàm quét đệ quy thư mục `ReplicatedStorage.Assets.Pets.[Common/Rate/Legendary]`.
     - Sử dụng **ViewportFrame (`PetView`)** và Camera ảo để render Pet 3D lên ô UI 2D. Tích hợp thuật toán lượng giác xoay Camera 360 độ quanh tâm Bounding Box của Pet với tốc độ `120 độ/giây` giúp Pet quay nhanh và mượt mà hơn trên mọi màn hình. Giải phóng sự kiện (disconnect) khi ô vật phẩm bị hủy để tránh rò rỉ bộ nhớ.
   - **Logic nút trang bị (EquipBtn)**:
     - Kiểm tra xem Pet hiển thị có trùng khớp với `EquippedPet` không.
-    - Cập nhật text hiển thị (`Equip` / `Unequip`) và thay đổi màu nền nút bấm trực quan.
-    - Khi bấm nút, bắn tín hiệu `EquipPetEvent:FireServer()` lên Server để cập nhật và tự động gọi refresh UI sau 0.2 giây.
-  - **Logic mua trứng (BuyEggBtn)**:
+    - Tự động hiển thị viền sáng (`Border.Enabled = true`) và thẻ đánh dấu (`EquippedTag.Visible = true`) cho Pet đang được trang bị, ẩn viền sáng/thẻ đánh dấu đối với các Pet khác để giao diện trực quan.
+    - Bấm nút để trang bị (hoặc tháo trang bị nếu đang được trang bị), gửi RemoteEvent lên Server và tự động refresh lại kho hàng ngay lập tức.
+    - **Dọn dẹp kết nối (Event listener recycling)**: Tận dụng cơ chế lưu trữ connection vào Dictionary và disconnect sự kiện cũ trước khi kết nối sự kiện bấm nút mới để ngăn chặn rò rỉ bộ nhớ khi tái sử dụng các ô UI.
+  - **Logic mua trứng & hiển thị cửa hàng (ShopFrame)**:
+    - Khi mở `ShopFrame`, hệ thống tự động lấy mô hình trứng tĩnh từ `ReplicatedStorage.Assets.Egg` và render 3D tĩnh vào ViewportFrame `EggView`.
+    - Camera được đặt cố định ở góc nghiêng phía trước (trục Z) và chếch lên trên (trục Y) hướng thẳng vào tâm quả trứng mà không chạy vòng lặp xoay tròn, tạo bố cục cân đối và chuyên nghiệp.
     - Bấm nút `BuyEggBtn` trong ShopFrame sẽ bắn tín hiệu `OpenEggEvent:FireServer("BasicEgg")`.
     - Lắng nghe `OpenEggEvent.OnClientEvent` để nhận thông tin pet mới mở được, hiển thị thông báo ra log và tự động refresh lại hòm đồ và Coins HUD.
 
