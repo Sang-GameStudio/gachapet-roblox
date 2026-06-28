@@ -9,6 +9,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+
+local CutsceneController = require(script.Parent:WaitForChild("CutsceneController"))
 
 local LocalPlayer = Players.LocalPlayer
 -- Lấy bảng PlayerGui chứa giao diện người chơi
@@ -17,9 +20,9 @@ local MainGui = PlayerGui:WaitForChild("MainGui")
 
 -- Tham chiếu tới các thành phần UI theo cấu trúc Explorer thực tế
 local HUD = MainGui:WaitForChild("HUD")
-local ShopBtn = HUD:WaitForChild("ShopBtn")
-local InvBtn = HUD:WaitForChild("InvBtn")
-local CoinsLabel = HUD:WaitForChild("CoinsLabel")
+local ShopBtn = HUD:WaitForChild("BtnShop")
+local InvBtn = HUD:WaitForChild("BtnInventory")
+local CoinsLabel = HUD:WaitForChild("LabelCoins")
 
 local ShopFrame = MainGui:WaitForChild("ShopFrame")
 local BuyEggBtn = ShopFrame:WaitForChild("BuyEggBtn")
@@ -41,6 +44,18 @@ local GetInventory = ReplicatedStorage:WaitForChild("GetInventory")
 -- Lưu giữ kích thước gốc của các bảng để phục vụ hiệu ứng Tween
 local shopFrameOriginalSize = ShopFrame.Size
 local inventoryFrameOriginalSize = InventoryFrame.Size
+
+-- Helper để định dạng số bằng dấu phẩy phân tách hàng nghìn (ví dụ: 79,400)
+local function formatNumber(value)
+	local str = tostring(value)
+	local formatted = str
+	while true do
+		local k
+		formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", "%1,%2")
+		if k == 0 then break end
+	end
+	return formatted
+end
 
 -- Ban đầu ẩn các bảng đi
 ShopFrame.Visible = false
@@ -98,39 +113,17 @@ local function renderPetToSlot(slotFrame, petName)
 		viewport.CurrentCamera = cam
 		cam.Parent = viewport
 		
-		-- 3. Lập trình hiệu ứng Camera xoay quanh Pet thời gian thực
+		-- 3. Thiết lập Camera ảo hướng thẳng vào mặt Pet (Đứng yên không xoay để tối ưu hiệu năng)
 		local modelCFrame, modelSize = petClone:GetBoundingBox()
 		local centerPos = modelCFrame.Position
 		
-		-- Tốc độ xoay (Tăng lên 120 độ mỗi giây để Pet quay nhanh hơn như yêu cầu)
-		local rotationSpeed = 120 
-		local currentAngle = 0
+		local radius = modelSize.Magnitude * 1.5 -- Khoảng cách camera dựa theo kích thước Pet
+		local height = modelSize.Y * 0.5 -- Chiều cao đặt camera (nhìn xéo nhẹ từ trên xuống)
 		
-		local renderConnection
-		renderConnection = RunService.RenderStepped:Connect(function(dt)
-			-- BẢO VỆ TRÁNH RÒ RỈ BỘ NHỚ: Ngắt kết nối ngay nếu UI/Pet bị xóa
-			if not petClone or not petClone.Parent or not cam or not cam.Parent then
-				if renderConnection then 
-					renderConnection:Disconnect() 
-				end
-				return
-			end
-			
-			-- Tính toán góc xoay dựa trên delta time để mượt mà trên mọi màn hình (60Hz - 240Hz)
-			currentAngle = currentAngle + (rotationSpeed * dt)
-			local rad = math.rad(currentAngle)
-			
-			-- Thuật toán lượng giác quay camera xung quanh vị trí trung tâm của Pet
-			local radius = modelSize.Magnitude * 1.5 -- Khoảng cách camera dựa theo kích thước Pet
-			local height = modelSize.Y * 0.5 -- Chiều cao đặt camera (nhìn xéo nhẹ từ trên xuống)
-			local offsetX = math.sin(rad) * radius
-			local offsetZ = math.cos(rad) * radius
-			
-			cam.CFrame = CFrame.new(
-				centerPos + Vector3.new(offsetX, height, offsetZ),
-				centerPos -- Luôn luôn hướng góc nhìn thẳng vào tâm Pet
-			)
-		end)
+		cam.CFrame = CFrame.new(
+			centerPos + Vector3.new(0, height, -radius),
+			centerPos -- Luôn luôn hướng góc nhìn thẳng vào tâm Pet
+		)
 	end
 end
 
@@ -150,11 +143,21 @@ local function refreshInventoryUI()
 	if not playerData then return end
 	
 	-- Cập nhật Coins hiển thị trên HUD
-	CoinsLabel.Text = "Coins: " .. tostring(playerData.Coins)
+	CoinsLabel.Text = formatNumber(playerData.Coins)
 	
 	-- Lấy thông tin con Pet hiện tại đang được trang bị từ Server
 	local currentlyEquipped = playerData.EquippedPet
 	local inventory = playerData.Inventory or {}
+	
+	-- 🎯 BỘ LỌC TRÙNG: Chỉ hiển thị mỗi loại Pet duy nhất một lần (lọc trùng tuyệt đối)
+	local uniqueInventory = {}
+	local seenPets = {}
+	for _, petName in ipairs(inventory) do
+		if not seenPets[petName] then
+			seenPets[petName] = true
+			table.insert(uniqueInventory, petName)
+		end
+	end
 	
 	-- 1. LẤY DANH SÁCH CÁC Ô SLOT HIỆN ĐANG CÓ TRÊN GIAO DIỆN
 	local existingSlots = {}
@@ -165,8 +168,8 @@ local function refreshInventoryUI()
 		end
 	end
 	
-	-- 2. DUYỆT QUA TÚI ĐỒ MỚI: THIẾU THÌ TẠO THÊM, CÓ SẴN THÌ DÙNG LẠI
-	for i, petName in ipairs(inventory) do
+	-- 2. DUYỆT QUA TÚI ĐỒ MỚI (LỌC TRÙNG): THIẾU THÌ TẠO THÊM, CÓ SẴN THÌ DÙNG LẠI
+	for i, petName in ipairs(uniqueInventory) do
 		local slot = existingSlots[i]
 		local isNewSlot = false
 		
@@ -221,9 +224,9 @@ local function refreshInventoryUI()
 		end
 	end
 	
-	-- 3. DỌN DẸP CÁC Ô THỪA (Trường hợp người chơi vừa xóa bớt Pet hoặc bị giảm số lượng)
-	if #existingSlots > #inventory then
-		for i = #inventory + 1, #existingSlots do
+	-- 3. DỌN DẸP CÁC Ô THỪA (Trường hợp danh sách duy nhất giảm đi)
+	if #existingSlots > #uniqueInventory then
+		for i = #uniqueInventory + 1, #existingSlots do
 			local oldSlot = existingSlots[i]
 			if oldSlot then
 				-- Giải phóng kết nối nút bấm tương ứng trước khi xóa
@@ -391,28 +394,66 @@ local function setupCloseButtonEffects(button, closeFrame, originalSize)
 	end)
 end
 
+-- Hàm thiết lập hiệu ứng Hover, Press cho các nút HUD (Shop/Inventory)
+local function setupHUDButtonEffects(button)
+	button.MouseEnter:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(235, 235, 235))
+	end)
+
+	button.MouseLeave:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(255, 255, 255))
+	end)
+
+	button.MouseButton1Down:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(170, 170, 170))
+	end)
+
+	button.MouseButton1Up:Connect(function()
+		tweenCloseButtonColor(button, Color3.fromRGB(235, 235, 235))
+	end)
+end
+
 -- Thiết lập hiệu ứng và sự kiện cho cả 2 nút đóng của Kho hàng và Cửa hàng
 setupCloseButtonEffects(BtnCloseInventory, InventoryFrame, inventoryFrameOriginalSize)
 setupCloseButtonEffects(BtnCloseShop, ShopFrame, shopFrameOriginalSize)
+
+-- Thiết lập hiệu ứng Hover/Press cho các nút trên HUD
+setupHUDButtonEffects(ShopBtn)
+setupHUDButtonEffects(InvBtn)
 
 -- Lắng nghe nút mua trứng trong Shop
 BuyEggBtn.Activated:Connect(function()
 	OpenEggEvent:FireServer("BasicEgg")
 end)
 
--- Lắng nghe kết quả mở trứng thành công từ Server (Chuẩn bị làm hiệu ứng ở Ngày 4)
+-- Lắng nghe kết quả mở trứng thành công từ Server và chạy cắt cảnh 3D
 OpenEggEvent.OnClientEvent:Connect(function(petName, rarity)
 	print("✨ [UI] Server báo trúng chú Pet: " .. petName .. " [" .. rarity .. "]")
 	
-	-- Làm mới túi đồ và đồng bộ Coins
-	refreshInventoryUI()
+	-- Chạy hiệu ứng cắt cảnh mở trứng 3D ngoài không gian ảo
+	CutsceneController.Play(petName, rarity, ShopFrame, InventoryFrame, refreshInventoryUI)
 end)
 
--- Khởi động lần đầu: đồng bộ và hiển thị số tiền Coins
+-- Khởi động lần đầu: đồng bộ và hiển thị số tiền Coins, tự động phát BGM
 task.spawn(function()
+	-- 🎵 KÍCH HOẠT NHẠC NỀN BACKGROUND TỰ ĐỘNG KHI CHƠI GAME
+	local assets = ReplicatedStorage:WaitForChild("Assets")
+	local sfxFolder = assets:WaitForChild("SFXs")
+	local soundServiceBGM = SoundService:FindFirstChild("Background")
+	if not soundServiceBGM then
+		local originalBGM = sfxFolder:WaitForChild("Background")
+		if originalBGM and originalBGM:IsA("Sound") then
+			soundServiceBGM = originalBGM:Clone()
+			soundServiceBGM.Parent = SoundService
+		end
+	end
+	if soundServiceBGM and not soundServiceBGM.IsPlaying then
+		soundServiceBGM:Play()
+	end
+	
 	task.wait(0.5)
 	local data = GetInventory:InvokeServer()
 	if data then
-		CoinsLabel.Text = "Coins: " .. tostring(data.Coins)
+		CoinsLabel.Text = formatNumber(data.Coins)
 	end
 end)

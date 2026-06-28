@@ -51,7 +51,7 @@ File này ghi nhận tất cả các công việc, công nghệ áp dụng và k
   - Implement thuật toán Weighted Random trong `GachaModule.RollPet()` để tính toán pet trúng giải dựa trên tổng trọng số.
 - **Xây dựng trình quản lý dữ liệu [DataManager.server.luau](file:///project/src/server/DataManager.server.luau):**
   - Kết nối và thao tác với Roblox `DataStoreService` để lưu/tải dữ liệu bằng `UpdateAsync` & `GetAsync` có bọc `pcall`.
-  - Thiết lập RAM cache `sessionData` trên Server, lưu vết Coins, Inventory và EquippedPet cho từng người chơi (gán mặc định là Pet `Common1` thay vì `Common_Dog`).
+  - Thiết lập RAM cache `sessionData` trên Server, lưu vết Coins, Inventory và EquippedPet cho từng người chơi (gán mặc định là Pet `Common1` thay vì `Common_Dog`, mặc định Coins lúc khởi tạo tăng từ `100` lên `100,000` coins phục vụ kiểm thử gacha, đồng thời nâng cấp key lưu trữ thành `PlayerSaveData_v2` để kích hoạt reset).
   - Tạo `leaderstats` và IntValue `Coins` để tự động hiển thị số xu của player lên Leaderboard UI mặc định của Roblox Studio.
   - Đăng ký `game:BindToClose()` để lưu lại toàn bộ dữ liệu người chơi đang online khi Server tắt hoặc khi ngắt chế độ chơi thử.
 - **Xây dựng logic bám đuôi và gacha tại [GameLogic.server.luau](file:///project/src/server/GameLogic.server.luau):**
@@ -105,5 +105,56 @@ File này ghi nhận tất cả các công việc, công nghệ áp dụng và k
 - **3D-in-2D Viewport Rendering**: Kỹ thuật chiếu mô hình 3D lên giao diện phẳng bằng ViewportFrame, tự động tính toán tiêu cự và khoảng cách camera dựa trên Bounding Box của mô hình để hiển thị Pet cân đối trong khung hình.
 - **Tween UI Animation**: Sử dụng EasingStyle (như `Back.Out`) giúp giao diện chuyển động sinh động, tạo phản hồi thao tác tốt (Game Feel).
 - **Client Memory Leak Prevention**: Nguyên tắc lập trình Roblox, tự động dọn dẹp các sự kiện lặp khung hình (`RenderStepped`) khi các Instance UI cha tương ứng bị phá hủy.
+
+---
+
+### ✨ Task 4: Hiện Thực Hóa Hiệu Ứng Gacha & Tách Biệt Mô-đun (VFX/SFX Cutscene & Code Refactoring)
+* **Ngày thực hiện:** 28/06/2026
+
+#### 1. Công việc đã thực hiện:
+- **Tách riêng mô-đun cắt cảnh [CutsceneController.luau](file:///project/src/client/CutsceneController.luau):**
+  - Xây dựng mô-đun dịch vụ dưới dạng **ModuleScript** giúp mã nguồn tinh gọn, dễ quản lý và bảo trì.
+  - Tích hợp hàm `CutsceneController.Play()` xử lý toàn bộ vòng đời của cắt cảnh mở trứng 3D.
+- **Hiện thực hóa Timeline Cắt cảnh (Gacha Cutscene Lifecycle):**
+  - **Khởi tạo & Cô lập không gian**: Chuyển Camera sang `Scriptable`, khóa camera cố định trên một tọa độ ảo trên bầu trời (`Vector3.new(0, 200, 0)`) để cách ly hoàn toàn với thế giới mặt đất, tránh vướng víu cảnh vật. Tự động ẩn cả hai UI Shop và Inventory để người chơi tập trung.
+  - **Giai đoạn Rung lắc (Buildup Phase)**: Nhân bản mô hình Trứng động (hỗ trợ cả tìm từ `ReplicatedStorage.Assets.Egg` và fallback ở `workspace`). Áp dụng ma trận Rotation gốc (`eggTemplate.CFrame.Rotation`) để trứng đứng thẳng chuẩn chỉnh, không bị lộn ngược đầu. Sử dụng thuật toán lượng giác lắc xoay trục Z ở tần số cao (`45 rad/s`, góc `12 độ`) trong `1.5 giây` tạo cảm giác rung lắc dữ dội trước khi nở.
+  - **Giai đoạn Phát nổ & Đắp nền tia sáng (Pop Phase)**: Xóa bỏ trứng, định tuyến trực tiếp đến hiệu ứng vương giả. **Thiết kế Modular & Hỗ trợ Đa Rarity VFX**: Sử dụng mô-đun [VFXManager.luau](file:///d:/Study/Unity/VNG/project/src/client/VFXManager.luau). Khi trứng vỡ, `VFXManager` tự động tìm nạp hiệu ứng hạt theo độ hiếm của Pet: độ hiếm `Legendary` sẽ kích hoạt vòng tròn ma pháp thánh khiết hoàng kim **`K - HOLINESS`**, độ hiếm `Rare` sẽ kích hoạt vòng tròn ma pháp hoàng kim **`B - TREASURE`**, các độ hiếm khác sử dụng ngôi sao lấp lánh `E - GLOW`. Logic cấu hình hạt được tách biệt độc lập cho cả 3 độ hiếm (Common, Rare, Legendary) để tùy biến chỉ số mặc định riêng biệt (như độ lớn Size, tốc độ phát hạt Rate, số hạt mồi Emit) phù hợp hoàn hảo với đặc tính của từng gói VFX trong Workspace.
+  - **Giai đoạn Tiết lộ Pet & Tạo cao trào kịch tính (Reveal Phase)**: Ép hiệu ứng hạt của `K - HOLINESS`, `B - TREASURE` hoặc `E - GLOW` chạy đơn lẻ trước trong **`0.5 giây`** để tạo cao trào kịch tính. Sau đó mới clone Pet đặt tại tâm cắt cảnh, chạy Tween búng đàn hồi `Back.Out` trong `0.5s` để chú Pet xuất hiện lung linh nổi bật trước phông nền lấp lánh ngoài không gian bầu trời nguyên bản sáng đẹp tự nhiên của map. Hệ thống hoàn tất quá trình kiểm thử và đã được trả lại cấu hình tỷ lệ ngẫu nhiên có trọng số (Weighted Random) chuẩn xác ban đầu.
+  - **Cơ chế tương tác Click/Tap để tiếp tục**: Thay vì tự đóng sau 3 giây, hệ thống chuyển sang chế độ **chờ tương tác vô tận**. Sử dụng `UserInputService` để lắng nghe thao tác Click chuột (PC) hoặc Chạm màn hình (Mobile/Tablet). Chú Pet sẽ liên tục xoay tròn Idle thư thái quanh trục Y (`os.clock() * 2.2`) cho đến khi người chơi click/tap màn hình để xác nhận. Sau đó, ngắt kết nối sự kiện (disconnect) tránh rò rỉ bộ nhớ, dọn dẹp các vật thể ảo, phục hồi camera ban đầu về nhân vật chính, tự động kích hoạt hiển thị Cửa hàng (`ShopFrame.Visible = true`) và gọi `refreshInventoryUI()`.
+- **Tích hợp hiệu ứng âm thanh SFX (SFX Integration):**
+  - Viết hàm `playSFX()` tự động tìm kiếm các file âm thanh `EggShake` và `Explosion` trong `ReplicatedStorage.Assets.SFXs`, clone vào `SoundService` và tự hủy sau khi phát xong để tối ưu hiệu năng.
+
+#### 2. Công nghệ áp dụng:
+- **Roblox Services**: SoundService, TweenService, ReplicatedStorage, Workspace, Players.
+- **Luau Language**: ModuleScript, Object-Oriented/Modular Programming, `require`.
+- **Cơ chế mô phỏng**: Camera Scripting (`Enum.CameraType.Scriptable`), Lượng giác lắc trứng (`math.sin`), Particle Emitter Activation, Garbage Collection (task.delay).
+
+#### 3. Kiến thức áp dụng:
+- **Modular Code Architecture**: Tách biệt logic UI và logic Cutscene qua ModuleScript giúp giảm kích thước file LocalScript chính (`UIController`), tránh mã nguồn spaghetti.
+- **3D Space Isolation (Skybox Stage)**: Dựng sân khấu ảo trên không trung tách biệt hoàn toàn để chạy các cảnh quay đặc biệt mà không lo bị vật thể khác che mắt hoặc ảnh hưởng hiệu suất render của game chính.
+- **Dynamic Asset Fallback**: Cơ chế kiểm tra dự phòng (Egg/Explosion) giúp game chạy mượt mà ngay cả khi môi trường Assets có sự thay đổi vị trí lưu trữ giữa Workspace và ReplicatedStorage.
+
+---
+
+### Cập nhật bổ sung (28/06/2026)
+- **Đồng bộ tên nút bấm HUD**: Cập nhật tệp [UIController.client.luau](file:///d:/Study/Unity/VNG/project/src/client/UIController.client.luau) để sử dụng chính xác các tên nút bấm mới tại `MainGui.HUD`:
+  - `ShopBtn` -> `BtnShop`
+  - `InvBtn` -> `BtnInventory`
+  - `CoinsLabel` -> `LabelCoins`
+  - Việc này giúp tránh lỗi kịch bản khi người dùng cập nhật lại giao diện người dùng trên Roblox Studio.
+- **Tinh chỉnh giao diện Coins & Hiệu ứng HUD**:
+  - Gỡ bỏ hoàn toàn tiền tố `"Coins: "` của `LabelCoins.Text` tại tất cả các điểm cập nhật dữ liệu để chỉ hiển thị thuần túy số lượng xu, đồng thời tích hợp thêm định dạng dấu phẩy hàng nghìn (ví dụ: `79,400` thay vì `79400`) giúp cải thiện tính dễ đọc của số dư lớn.
+  - Tích hợp thêm hiệu ứng lún cơ học chuyên nghiệp cho hai nút `BtnInventory` và `BtnShop` khi người dùng di chuột (`MouseEnter`/`MouseLeave`) và bấm giữ chuột trái/chạm màn hình (`MouseButton1Down`/`MouseButton1Up`) tương tự như các nút đóng menu.
+- **Lọc trùng lặp Pet trên UI Inventory**:
+  - Cập nhật hàm `refreshInventoryUI()` để thực hiện lọc trùng lặp danh sách Pet sở hữu thông qua Hash-Map. Mỗi loại Pet duy nhất chỉ xuất hiện một ô đại diện duy nhất trên ScrollingFrame để tối ưu hóa không gian trưng bày, trong khi các ô Viewport ảo 3D cũ và các liên kết sự kiện tương tác vẫn được duy trì mượt mà không bị tải lại hoặc rò rỉ bộ nhớ.
+- **Cơ chế đứng yên hướng mặt về phía trước cho Pet trong Kho đồ**:
+  - **Trong kho đồ Inventory**: Loại bỏ hoàn toàn vòng lặp `RenderStepped` xoay camera ảo 360 độ trong [UIController.client.luau](file:///d:/Study/Unity/VNG/project/src/client/UIController.client.luau). Thiết lập góc đặt camera trực diện mặt trước (`-radius` trên trục Z) tĩnh một lần duy nhất, giải phóng tài nguyên xử lý và giúp các chú Pet quay mặt chính diện hướng ra ngoài màn hình.
+  - **Trong cắt cảnh Gacha**: Khôi phục lại kịch bản xoay tròn thời gian thực của Pet trong [CutsceneController.luau](file:///d:/Study/Unity/VNG/project/src/client/CutsceneController.luau) (`spinAngle` dựa trên `os.clock() * 2.2`) theo đúng yêu cầu để tăng tính sinh động khi mở trứng.
+- **Tích hợp hệ thống âm thanh SFX & BGM**:
+  - **Nhạc nền BGM (Background)**: Tự động kích hoạt nhân bản và phát nhạc nền `Background` sang `SoundService` ngay khi khởi chạy game (lần đầu tải UI trong [UIController.client.luau](file:///d:/Study/Unity/VNG/project/src/client/UIController.client.luau)), bảo đảm nhạc phát xuyên suốt và lặp lại liên tục tự động.
+  - **Nhạc lắc trứng (Egg)**: Nhân bản và phát nhạc `Egg` ở dạng lặp (`Looped = true`) trong suốt Giai đoạn 1 (rung lắc). Ngay khi chuyển sang Giai đoạn 2 (phát nổ), hệ thống lập tức ngắt (`Stop`) và giải phóng bộ nhớ (`Destroy`) âm thanh này một cách dứt điểm.
+  - **Âm thanh chúc mừng theo độ hiếm**: Phát âm thanh một lần (`Looped = false`) khi Pet xuất hiện tương thích hoàn toàn với tên độ hiếm (`Common`, `Rare`, `Legendary`) để tạo điểm nhấn âm thanh, tự động xóa bản sao sau khi phát xong. Cập nhật đồng bộ theo tên tệp âm thanh `"Rare"` mới bạn đã sửa đổi trong Roblox Studio.
+
+
 
 

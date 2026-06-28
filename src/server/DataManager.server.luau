@@ -6,12 +6,12 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 -- Tạo hoặc lấy DataStore tên là "PlayerSaveData_v1"
-local PlayerDataStore = DataStoreService:GetDataStore("PlayerSaveData_v1")
+local PlayerDataStore = DataStoreService:GetDataStore("PlayerSaveData_v2") -- Tăng version lên v2 để reset data cũ khi test, đảm bảo Coins được nhận là 100,000
 local Players = game:GetService("Players")
 
--- Cấu hình mặc định cho người chơi mới
+-- Cấu hình mặc định cho người chơi mới (Đã tăng mặc định Coins lên 100,000 để phục vụ test Gacha)
 local DEFAULT_DATA = {
-	Coins = 100,
+	Coins = 100000,
 	Inventory = { "Common1" },
 	EquippedPet = "Common1"
 }
