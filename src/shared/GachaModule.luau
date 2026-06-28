@@ -34,19 +34,14 @@ end
 	Trả về table thông tin của Pet trúng thưởng
 ]]
 function GachaModule.RollPet()
-	-- Sinh một số ngẫu nhiên từ 1 đến tổng trọng số (100)
 	local rolledValue = math.random(1, totalWeight)
 	local currentSum = 0
-	
-	-- Duyệt qua danh sách để tìm xem số ngẫu nhiên rơi vào khoảng nào
 	for _, pet in ipairs(GachaModule.PET_POOL) do
 		currentSum = currentSum + pet.Weight
 		if rolledValue <= currentSum then
-			return pet -- Trả về thông tin Pet trúng tuyển
+			return pet
 		end
 	end
-	
-	-- Phòng hờ trường hợp lỗi ngoài ý muốn, trả về Pet mặc định
 	return GachaModule.PET_POOL[1]
 end
 
