@@ -9,6 +9,8 @@ local Players = game:GetService("Players")
 
 -- Import GachaModule từ ReplicatedStorage.Shared
 local GachaModule = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GachaModule"))
+local PetAuraConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PetAuraConfig"))
+local RunService = game:GetService("RunService")
 
 -- Tham chiếu tới các Remote từ ReplicatedStorage
 local OpenEggEvent = ReplicatedStorage:WaitForChild("OpenEggEvent")
@@ -30,6 +32,82 @@ local function destroyExistingPet(player)
 	local existingPet = workspace:FindFirstChild(player.Name .. "_Pet")
 	if existingPet then
 		existingPet:Destroy()
+	end
+end
+
+--[[
+	Hàm sinh bệ xoay hào quang (Aura) dưới chân Pet dựa theo cấu hình độ hiếm
+]]
+-- Chiều cao dịch chuyển để hào quang chạm hẳn mặt đất (Pet cao 2 studs, nửa thân là 1 stud -> -1.05)
+local AURA_HEIGHT_OFFSET = -4.4
+
+local function applyCustomAuraToPet(petModel, petName)
+	-- Tra cứu dữ liệu cấu hình Aura
+	local petData = PetAuraConfig.Pets[petName]
+	if not petData or not petData.AuraId or petData.AuraId == "" or petData.AuraId == "rbxassetid://0" then
+		return
+	end
+	
+	-- Tìm phôi mẫu Aura một cách an toàn
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local auraFolder = assets and assets:FindFirstChild("Aura")
+	local auraTemplate = auraFolder and auraFolder:FindFirstChild("Aura")
+	
+	if not auraTemplate then
+		warn("LỖI: Không tìm thấy mẫu Aura tại Assets/Aura/Aura")
+		return
+	end
+	
+	-- Sao chép phôi mẫu Aura
+	local newAura = auraTemplate:Clone()
+	newAura.Name = "ActivePetAura" -- Đặt tên định danh đồng bộ
+	
+	-- Tắt va chạm và vật lý neo của bệ Aura để tránh kẹt chuyển động hoặc neo chết Pet
+	if newAura:IsA("BasePart") then
+		newAura.CanCollide = false
+		newAura.Anchored = false
+	end
+	for _, child in ipairs(newAura:GetDescendants()) do
+		if child:IsA("BasePart") then
+			child.CanCollide = false
+			child.Anchored = false
+		end
+	end
+	
+	-- Gán ID ảnh Decal an toàn (Texture/ColorMapContent)
+	local decal = newAura:FindFirstChildOfClass("Decal")
+	if decal then
+		local success = pcall(function()
+			decal.Texture = petData.AuraId
+		end)
+		if not success then
+			pcall(function()
+				decal.ColorMapContent = Content.fromUri(petData.AuraId)
+			end)
+		end
+	end
+	
+	newAura.Parent = petModel
+	
+	-- Định vị bệ nằm ngay sát mặt đất dưới chân khối trục chính (Base) của Pet
+	local rootPart = petModel.PrimaryPart or petModel:WaitForChild("Base")
+	
+	-- ĐỔI SANG DÙNG WELD CỔ ĐIỂN: Cho phép xoay khớp C0 mà không làm ảnh hưởng/xoay ngược lại mô hình Pet
+	local jointWeld = Instance.new("Weld")
+	jointWeld.Name = "AuraAnimateWeld" -- Đặt tên riêng để xoay khớp tập trung
+	jointWeld.Part0 = rootPart -- Gắn vào bộ phận gốc của Pet
+	jointWeld.Part1 = newAura  -- Gắn vào bệ Aura
+	
+	-- Thiết lập vị trí tương đối đẩy bệ xuống sát đất
+	jointWeld.C0 = CFrame.new(0, AURA_HEIGHT_OFFSET, 0)
+	jointWeld.C1 = CFrame.new(0, 0, 0)
+	jointWeld.Parent = newAura
+	
+	-- TẮT BÓNG ĐỔ MẶC ĐỊNH CỦA PET: Để chiếc vòng ma thuật làm nhiệm vụ thay thế bóng đổ nghệ thuật
+	for _, child in ipairs(petModel:GetChildren()) do
+		if child:IsA("BasePart") then
+			child.CastShadow = false
+		end
 	end
 end
 
@@ -59,7 +137,7 @@ local function setupPetPhysics(player, character, petModel)
 	if not attachmentPlayer then
 		attachmentPlayer = Instance.new("Attachment")
 		attachmentPlayer.Name = "PetAttachment"
-		attachmentPlayer.Position = Vector3.new(2, 1.5, 3)
+		attachmentPlayer.Position = Vector3.new(2, 1.5, 5)
 		attachmentPlayer.Parent = rootPart
 	end
 	
@@ -139,11 +217,14 @@ local function spawnPetModel(player, character, petName)
 		-- Đặt vị trí xuất hiện ban đầu ngay sau lưng người chơi để tránh di chuyển đột ngột từ tọa độ 0,0,0
 		local rootPart = character:FindFirstChild("HumanoidRootPart")
 		if rootPart then
-			petClone:SetPrimaryPartCFrame(rootPart.CFrame * CFrame.new(2, 1.5, 3))
+			petClone:SetPrimaryPartCFrame(rootPart.CFrame * CFrame.new(2, 1.5, 5))
 		end
 		
 		-- Cài đặt vật lý bám đuôi
 		setupPetPhysics(player, character, petClone)
+		
+		-- Sinh bệ xoay hào quang (Aura) nếu có
+		applyCustomAuraToPet(petClone, petName)
 	else
 		warn("LỖI: Không tìm thấy model Pet trong Assets/ReplicatedStorage có tên: " .. petName)
 	end
@@ -191,7 +272,8 @@ OpenEggEvent.OnServerEvent:Connect(function(player, eggType)
 	local playerData = shared.DataManager.GetData(player)
 	
 	-- Đảm bảo an toàn: Kiểm tra số dư xu của người chơi trên Server
-	if playerData.Coins >= EGG_PRICE then
+	local playerCoins = tonumber(playerData.Coins) or 0
+	if playerCoins >= EGG_PRICE then
 		-- 1. Trừ tiền an toàn trên Server
 		shared.DataManager.AddCoins(player, -EGG_PRICE)
 		
@@ -244,4 +326,23 @@ Players.PlayerAdded:Connect(function(player)
 			end
 		end
 	end)
+end)
+
+local ROTATION_SPEED = 60 -- Vận tốc xoay (Độ/giây)
+
+-- Cỗ máy xoay bệ hào quang tập trung, tối ưu hiệu năng tối đa (chỉ xoay khớp C0 nội bộ của các Pet đang online)
+RunService.Heartbeat:Connect(function(deltaTime)
+	for _, player in ipairs(Players:GetPlayers()) do
+		local petModel = workspace:FindFirstChild(player.Name .. "_Pet")
+		if petModel then
+			local aura = petModel:FindFirstChild("ActivePetAura")
+			if aura then
+				local jointWeld = aura:FindFirstChild("AuraAnimateWeld")
+				if jointWeld and jointWeld:IsA("Weld") then
+					-- Nhân góc xoay quanh trục Y trực tiếp vào khớp C0 để chỉ xoay bệ mà không làm xoay cả con Pet
+					jointWeld.C0 = jointWeld.C0 * CFrame.Angles(0, math.rad(ROTATION_SPEED) * deltaTime, 0)
+				end
+			end
+		end
+	end
 end)

@@ -154,7 +154,22 @@ File này ghi nhận tất cả các công việc, công nghệ áp dụng và k
   - **Nhạc nền BGM (Background)**: Tự động kích hoạt nhân bản và phát nhạc nền `Background` sang `SoundService` ngay khi khởi chạy game (lần đầu tải UI trong [UIController.client.luau](file:///d:/Study/Unity/VNG/project/src/client/UIController.client.luau)), bảo đảm nhạc phát xuyên suốt và lặp lại liên tục tự động.
   - **Nhạc lắc trứng (Egg)**: Nhân bản và phát nhạc `Egg` ở dạng lặp (`Looped = true`) trong suốt Giai đoạn 1 (rung lắc). Ngay khi chuyển sang Giai đoạn 2 (phát nổ), hệ thống lập tức ngắt (`Stop`) và giải phóng bộ nhớ (`Destroy`) âm thanh này một cách dứt điểm.
   - **Âm thanh chúc mừng theo độ hiếm**: Phát âm thanh một lần (`Looped = false`) khi Pet xuất hiện tương thích hoàn toàn với tên độ hiếm (`Common`, `Rare`, `Legendary`) để tạo điểm nhấn âm thanh, tự động xóa bản sao sau khi phát xong. Cập nhật đồng bộ theo tên tệp âm thanh `"Rare"` mới bạn đã sửa đổi trong Roblox Studio.
-
-
-
+- **Sửa lỗi so sánh kiểu dữ liệu khi mua trứng (Gacha)**:
+  - **Khắc phục lỗi logic so sánh kiểu dữ liệu**: Sửa lỗi `attempt to compare number <= string` xuất hiện ở server khi người chơi nhấn nút Gacha. Lỗi này do dữ liệu Coins lưu từ DataStore phiên bản cũ được lưu dưới dạng chuỗi (string) thay vì số (number).
+  - **Chuẩn hóa dữ liệu khi Load**: Cập nhật tệp [DataManager.server.luau](file:///d:/Study/Unity/VNG/project/src/server/DataManager.server.luau) để ép kiểu `tonumber(savedData.Coins)` khi tải thông tin từ DataStore.
+  - **Gia cố bảo vệ so sánh trên Server**: Cập nhật tệp [GameLogic.server.luau](file:///d:/Study/Unity/VNG/project/src/server/GameLogic.server.luau) để đảm bảo chuyển đổi `tonumber(playerData.Coins)` trước khi so sánh với giá trứng `EGG_PRICE`.
+- **Cập nhật Bảng Tỷ Lệ Gacha Shop & Click SFX**:
+  - **Khởi tạo bảng tỷ lệ Gacha**: Đồng bộ tỷ lệ mở trứng lên 3 TextLabel (`CommonText`, `RareText`, `LegendaryText`) nằm trong `RatePanel` của `ShopFrame` tại client (Common: 80%, Rare: 15%, Legendary: 5%). Việc này giúp ghi đè các giá trị placeholder thiết kế thô trong Roblox Studio một cách linh hoạt.
+  - **Tích hợp âm thanh tương tác click (Click SFX)**: Thêm hàm bổ trợ `playClickSFX` để tự động phát tệp âm thanh `Click` từ `SFXs` khi người chơi nhấp chọn các nút trên HUD (BtnShop, BtnInventory), các nút đóng panel (BtnCloseShop, BtnCloseInventory), nút mua trứng (BuyEggBtn) và nút trang bị Pet (EquipBtn), nâng cao đáng kể cảm giác phản hồi giao diện.
+- **Tích hợp hiệu ứng Hào quang dưới chân Pet (Aura)**:
+  - **Tạo Module Cấu hình**: Tạo tệp tin [PetAuraConfig.luau](file:///d:/Study/Unity/VNG/project/src/shared/PetAuraConfig.luau) chứa danh sách toàn bộ 9 chú Pet và ID ảnh decal hào quang tương ứng của chúng (người chơi đã cung cấp ID cho tất cả các loại Pet bao gồm cả Common).
+  - **Hàm khởi tạo sinh bệ xoay Aura**: Thêm hàm `applyCustomAuraToPet` vào [GameLogic.server.luau](file:///d:/Study/Unity/VNG/project/src/server/GameLogic.server.luau) để tự động sinh bệ xoay bám theo chân Pet. Sử dụng khớp nối **`Weld`** cổ điển (`AuraAnimateWeld`) thay thế cho `WeldConstraint`, đặt chiều cao lệch `AURA_HEIGHT_OFFSET = -4.4` để hào quang bám sát chạm đất 100%. Đảm bảo gán `Anchored = false` và `CanCollide = false` cho bệ hào quang để tránh kẹt chuyển động hoặc khóa chết nhân vật/Pet không di chuyển được.
+  - **Tối ưu hóa hiệu năng vòng lặp xoay Aura**: Khai báo sự kiện `RunService.Heartbeat` ở server để quay khớp nối `C0` với vận tốc **60 độ/giây**. Bằng việc chỉ nhân xoay khớp `C0` của `Weld`, **chỉ có bệ hào quang xoay tròn** dưới đất, trong khi chú Pet vẫn hướng mặt về phía trước và di chuyển/bám đuôi người chơi mượt mà theo đúng cơ chế vật lý.
+- **Khắc phục lỗi mất hiển thị nền Pet Slot theo độ hiếm**:
+  - **Lưu cấu hình PetConfig trên ổ đĩa**: Tạo thư mục cấu hình `src/shared/PetConfig` và các tệp văn bản `CommonBG.txt`, `RareBG.txt`, `LegendaryBG.txt` chứa ID ảnh nền tương ứng. Việc này ngăn chặn Rojo tự động xóa thư mục cấu hình khi đồng bộ hóa từ ổ đĩa sang Roblox Studio.
+  - **Phục hồi và Tối ưu hóa tải ảnh nền**: Cập nhật hàm cập nhật giao diện trong [UIController.client.luau](file:///d:/Study/Unity/VNG/project/src/client/UIController.client.luau) để sử dụng `WaitForChild("PetConfig", 2)` giúp ngăn chặn tình trạng bất đồng bộ/chậm tải khi game khởi chạy.
+- **Tích hợp Vòng lặp Autosave Rải Rác (Staggered Autosave Loop)**:
+  - **Thiết lập chu kỳ lưu ngầm định kỳ**: Bổ sung hàm `startAutosaveLoop` chạy ngầm ở cuối tệp [DataManager.server.luau](file:///d:/Study/Unity/VNG/project/src/server/DataManager.server.luau) để tự động quét và lưu dữ liệu người chơi định kỳ mỗi **5 phút** (`AUTOSAVE_INTERVAL = 300` giây).
+  - **Triệt tiêu Rate Limit qua cơ chế rải tải**: Sử dụng nghỉ luồng tĩnh `task.wait(2)` giữa các lượt lưu của từng người chơi để chia đều lưu lượng ghi xuống Roblox DataStore Cloud, đảm bảo tính bền vững và an toàn 100% cho Server.
+  - **Gọi lưu bất đồng bộ**: Sử dụng `task.spawn` để thực thi lưu bất đồng bộ `savePlayerData(player)` của từng người chơi mà không gây block hàng đợi của người chơi tiếp theo.
 
