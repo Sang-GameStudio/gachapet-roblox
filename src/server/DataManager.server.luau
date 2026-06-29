@@ -117,7 +117,7 @@ local function onPlayerAdded(player)
 	if success and savedData then
 		-- Đã tìm thấy dữ liệu cũ, nạp vào RAM
 		sessionData[userId] = {
-			Coins = savedData.Coins or DEFAULT_DATA.Coins,
+			Coins = tonumber(savedData.Coins) or DEFAULT_DATA.Coins,
 			Inventory = savedData.Inventory or { unpack(DEFAULT_DATA.Inventory) },
 			EquippedPet = savedData.EquippedPet -- Có thể nil nếu không trang bị gì
 		}
@@ -183,3 +183,39 @@ game:BindToClose(function()
 	-- Đợi thêm 1s để chắc chắn các request mạng hoàn thành
 	task.wait(1)
 end)
+
+local AUTOSAVE_INTERVAL = 300 -- 5 phút tự động quét 1 lần (300 giây)
+local DELAY_BETWEEN_PLAYERS = 2 -- Nghỉ 2 giây giữa mỗi người chơi để triệt tiêu Rate Limit
+
+--[[
+	Hàm chạy ngầm tự động lưu dữ liệu rải rác (Staggered Autosave)
+	Giúp phân bổ đều tải DataStore ra dòng thời gian, chống Rate Limit
+]]
+local function startAutosaveLoop()
+	task.spawn(function()
+		while true do
+			task.wait(AUTOSAVE_INTERVAL) -- Chờ đúng 5 phút rồi mới kích hoạt đợt lưu mới
+			
+			local activePlayers = Players:GetPlayers()
+			
+			for _, player in ipairs(activePlayers) do
+				-- Kiểm tra phòng hờ người chơi đã thoát trong lúc đang đợi hàng đợi
+				if player and player.Parent == Players then
+					-- Chỉ tiến hành lưu nếu dữ liệu của họ đã được nạp thành công vào RAM Cache trước đó
+					if shared.DataManager.IsLoaded(player) then
+						-- Sử dụng task.spawn để việc lưu của Player này hoàn toàn bất đồng bộ, không bắt Player sau phải đợi
+						task.spawn(function()
+							savePlayerData(player)
+						end)
+					end
+				end
+				
+				-- 🔥 BÍ QUYẾT CỐT LÕI: Nghỉ 2 giây trước khi tiến hành lưu người chơi tiếp theo
+				task.wait(DELAY_BETWEEN_PLAYERS)
+			end
+		end
+	end)
+end
+
+-- Kích hoạt cỗ máy Autosave chạy ngầm
+startAutosaveLoop()

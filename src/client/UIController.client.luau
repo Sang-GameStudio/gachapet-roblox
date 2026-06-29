@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 local CutsceneController = require(script.Parent:WaitForChild("CutsceneController"))
+local PetClass = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PetClass"))
 
 local LocalPlayer = Players.LocalPlayer
 -- Lấy bảng PlayerGui chứa giao diện người chơi
@@ -27,6 +28,12 @@ local CoinsLabel = HUD:WaitForChild("LabelCoins")
 local ShopFrame = MainGui:WaitForChild("ShopFrame")
 local BuyEggBtn = ShopFrame:WaitForChild("BuyEggBtn")
 local BtnCloseShop = ShopFrame:WaitForChild("BtnCloseShop")
+
+-- Bảng tỷ lệ Gacha trong Shop
+local RatePanel = ShopFrame:WaitForChild("RatePanel")
+local CommonText = RatePanel:WaitForChild("CommonText")
+local RareText = RatePanel:WaitForChild("RareText")
+local LegendaryText = RatePanel:WaitForChild("LegendaryText")
 
 local InventoryFrame = MainGui:WaitForChild("InventoryFrame")
 local PetScrollingFrame = InventoryFrame:WaitForChild("PetScrollingFrame")
@@ -55,6 +62,37 @@ local function formatNumber(value)
 		if k == 0 then break end
 	end
 	return formatted
+end
+
+-- 🔊 Phát âm thanh click hệ thống khi tương tác UI
+local function playClickSFX()
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local sfxFolder = assets and assets:FindFirstChild("SFXs")
+	local clickSound = sfxFolder and sfxFolder:FindFirstChild("Click")
+	if clickSound and clickSound:IsA("Sound") then
+		local soundClone = clickSound:Clone()
+		soundClone.Parent = SoundService
+		soundClone:Play()
+		task.delay(soundClone.TimeLength + 0.5, function()
+			soundClone:Destroy()
+		end)
+	end
+end
+
+-- Cấu hình hiển thị tỷ lệ mở trứng mặc định
+local GACHA_RATES = {
+	Common = 80,
+	Rare = 15,
+	Legendary = 5
+}
+
+--[[
+	Hàm khởi tạo và hiển thị tỷ lệ phần trăm mở trứng lên bảng Gacha Shop
+]]
+local function initializeGachaRatesUI()
+	CommonText.Text = "Common: " .. tostring(GACHA_RATES.Common) .. "%"
+	RareText.Text = "Rare: " .. tostring(GACHA_RATES.Rare) .. "%"
+	LegendaryText.Text = "Legendary: " .. tostring(GACHA_RATES.Legendary) .. "%"
 end
 
 -- Ban đầu ẩn các bảng đi
@@ -149,15 +187,33 @@ local function refreshInventoryUI()
 	local currentlyEquipped = playerData.EquippedPet
 	local inventory = playerData.Inventory or {}
 	
-	-- 🎯 BỘ LỌC TRÙNG: Chỉ hiển thị mỗi loại Pet duy nhất một lần (lọc trùng tuyệt đối)
-	local uniqueInventory = {}
-	local seenPets = {}
+	-- BƯỚC B: CHUYỂN ĐỔI MẢNG PHẲNG THÀNH BỘ ĐẾM SỐ LƯỢNG (Dictionary)
+	local petCounts = {}  -- Cấu trúc lưu: { ["Common1"] = 12, ["Common2"] = 5, ["Rare1"] = 1 }
+	local uniqueInventory = {} -- Mảng chứa danh sách tên phân lớp duy nhất để sắp xếp
+	
 	for _, petName in ipairs(inventory) do
-		if not seenPets[petName] then
-			seenPets[petName] = true
+		if not petCounts[petName] then
+			petCounts[petName] = 0
 			table.insert(uniqueInventory, petName)
 		end
+		petCounts[petName] = petCounts[petName] + 1
 	end
+	
+	-- BƯỚC C: THUẬT TOÁN SẮP XẾP NÂNG CAO (Theo độ hiếm trước -> Theo tên bảng chữ cái sau)
+	table.sort(uniqueInventory, function(a, b)
+		local rarityA = PetClass.GetRarity(a)
+		local rarityB = PetClass.GetRarity(b)
+		
+		local weightA = PetClass.RARITY_WEIGHTS[rarityA] or 4
+		local weightB = PetClass.RARITY_WEIGHTS[rarityB] or 4
+		
+		if weightA == weightB then
+			-- NẾU CÙNG ĐỘ HIẾM: Sắp xếp theo tên chữ cái (Ví dụ: Common1 đứng trước Common2)
+			return a < b
+		end
+		-- NẾU KHÁC ĐỘ HIẾM: Xếp theo thứ tự Common -> Rare -> Legendary
+		return weightA < weightB
+	end)
 	
 	-- 1. LẤY DANH SÁCH CÁC Ô SLOT HIỆN ĐANG CÓ TRÊN GIAO DIỆN
 	local existingSlots = {}
@@ -168,7 +224,7 @@ local function refreshInventoryUI()
 		end
 	end
 	
-	-- 2. DUYỆT QUA TÚI ĐỒ MỚI (LỌC TRÙNG): THIẾU THÌ TẠO THÊM, CÓ SẴN THÌ DÙNG LẠI
+	-- 2. DUYỆT QUA TÚI ĐỒ MỚI (LỌC TRÙNG & SẮP XẾP): THIẾU THÌ TẠO THÊM, CÓ SẴN THÌ DÙNG LẠI
 	for i, petName in ipairs(uniqueInventory) do
 		local slot = existingSlots[i]
 		local isNewSlot = false
@@ -188,6 +244,27 @@ local function refreshInventoryUI()
 		local viewport = slot:FindFirstChild("PetView")
 		if isNewSlot or not viewport or not viewport:FindFirstChild(petName) then
 			renderPetToSlot(slot, petName)
+		end
+		
+		-- 🎯 CẬP NHẬT SỐ LƯỢNG PET: Định dạng "x" + số lượng (ví dụ: x12)
+		local count = petCounts[petName]
+		local amountText = slot:FindFirstChild("AmountText")
+		if amountText and amountText:IsA("TextLabel") then
+			amountText.Text = "x" .. tostring(count)
+		end
+		
+		-- 🎯 CẬP NHẬT ẢNH NỀN THEO ĐỘ HIẾM: Tìm StringValue tương ứng trong PetConfig
+		local rarity = PetClass.GetRarity(petName)
+		local sharedFolder = ReplicatedStorage:WaitForChild("Shared")
+		local petConfigFolder = sharedFolder:WaitForChild("PetConfig", 2)
+		if petConfigFolder then
+			local targetStringValue = petConfigFolder:FindFirstChild(rarity .. "BG")
+			if targetStringValue and targetStringValue:IsA("StringValue") then
+				local bgSlot = slot:FindFirstChild("Bg_Slot")
+				if bgSlot and bgSlot:IsA("ImageLabel") then
+					bgSlot.Image = targetStringValue.Value
+				end
+			end
 		end
 		
 		-- 🎯 CẬP NHẬT TRẠNG THÁI TRANG BỊ TRỰC TIẾP
@@ -211,6 +288,7 @@ local function refreshInventoryUI()
 			end
 			
 			buttonConnections[slot] = equipBtn.Activated:Connect(function()
+				playClickSFX()
 				if petName == currentlyEquipped then
 					EquipPetEvent:FireServer(nil)
 				else
@@ -339,6 +417,7 @@ end
 
 -- Cấu hình sự kiện bấm nút HUD đóng mở bảng
 ShopBtn.Activated:Connect(function()
+	playClickSFX()
 	toggleFrame(ShopFrame, shopFrameOriginalSize)
 	if ShopFrame.Visible then
 		-- Tự động đóng Inventory khi mở Shop
@@ -349,6 +428,7 @@ ShopBtn.Activated:Connect(function()
 end)
 
 InvBtn.Activated:Connect(function()
+	playClickSFX()
 	toggleFrame(InventoryFrame, inventoryFrameOriginalSize)
 	if InventoryFrame.Visible then
 		-- Tự động đóng Shop khi mở Inventory
@@ -388,6 +468,7 @@ local function setupCloseButtonEffects(button, closeFrame, originalSize)
 
 	-- 5. Kích hoạt hàm đóng khung tương ứng khi click
 	button.Activated:Connect(function()
+		playClickSFX()
 		if closeFrame.Visible then
 			toggleFrame(closeFrame, originalSize)
 		end
@@ -423,6 +504,7 @@ setupHUDButtonEffects(InvBtn)
 
 -- Lắng nghe nút mua trứng trong Shop
 BuyEggBtn.Activated:Connect(function()
+	playClickSFX()
 	OpenEggEvent:FireServer("BasicEgg")
 end)
 
@@ -434,7 +516,7 @@ OpenEggEvent.OnClientEvent:Connect(function(petName, rarity)
 	CutsceneController.Play(petName, rarity, ShopFrame, InventoryFrame, refreshInventoryUI)
 end)
 
--- Khởi động lần đầu: đồng bộ và hiển thị số tiền Coins, tự động phát BGM
+-- Khởi động lần đầu: đồng bộ và hiển thị số tiền Coins, tự động phát BGM và tỷ lệ Gacha
 task.spawn(function()
 	-- 🎵 KÍCH HOẠT NHẠC NỀN BACKGROUND TỰ ĐỘNG KHI CHƠI GAME
 	local assets = ReplicatedStorage:WaitForChild("Assets")
@@ -450,6 +532,9 @@ task.spawn(function()
 	if soundServiceBGM and not soundServiceBGM.IsPlaying then
 		soundServiceBGM:Play()
 	end
+	
+	-- Khởi tạo bảng tỷ lệ phần trăm mở trứng trên UI Shop
+	initializeGachaRatesUI()
 	
 	task.wait(0.5)
 	local data = GetInventory:InvokeServer()
