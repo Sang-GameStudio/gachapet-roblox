@@ -10,9 +10,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
+local ContentProvider = game:GetService("ContentProvider")
 
 local CutsceneController = require(script.Parent:WaitForChild("CutsceneController"))
-local PetClass = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PetClass"))
+local PetConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PetConfig"))
 
 local LocalPlayer = Players.LocalPlayer
 -- Lấy bảng PlayerGui chứa giao diện người chơi
@@ -49,8 +50,8 @@ local EquipPetEvent = ReplicatedStorage:WaitForChild("EquipPetEvent")
 local GetInventory = ReplicatedStorage:WaitForChild("GetInventory")
 
 -- Lưu giữ kích thước gốc của các bảng để phục vụ hiệu ứng Tween
-local shopFrameOriginalSize = ShopFrame.Size
-local inventoryFrameOriginalSize = InventoryFrame.Size
+local SHOP_FRAME_ORIGINAL_SIZE = ShopFrame.Size
+local INVENTORY_FRAME_ORIGINAL_SIZE = InventoryFrame.Size
 
 -- Helper để định dạng số bằng dấu phẩy phân tách hàng nghìn (ví dụ: 79,400)
 local function formatNumber(value)
@@ -64,7 +65,7 @@ local function formatNumber(value)
 	return formatted
 end
 
--- 🔊 Phát âm thanh click hệ thống khi tương tác UI
+-- Phát âm thanh click hệ thống khi tương tác UI
 local function playClickSFX()
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local sfxFolder = assets and assets:FindFirstChild("SFXs")
@@ -79,20 +80,65 @@ local function playClickSFX()
 	end
 end
 
--- Cấu hình hiển thị tỷ lệ mở trứng mặc định
-local GACHA_RATES = {
-	Common = 80,
-	Rare = 15,
-	Legendary = 5
-}
-
 --[[
-	Hàm khởi tạo và hiển thị tỷ lệ phần trăm mở trứng lên bảng Gacha Shop
+	Hàm xử lý cập nhật văn bản tỷ lệ động (RichText đổi màu phần trăm)
 ]]
-local function initializeGachaRatesUI()
-	CommonText.Text = "Common: " .. tostring(GACHA_RATES.Common) .. "%"
-	RareText.Text = "Rare: " .. tostring(GACHA_RATES.Rare) .. "%"
-	LegendaryText.Text = "Legendary: " .. tostring(GACHA_RATES.Legendary) .. "%"
+local function updateRatePanelUI(rareCount, legCount)
+	local commonText, rareText, legText = "", "", ""
+
+	-- 1. Trường hợp chạm trần bảo hiểm cứng (Hard Pity)
+	if legCount >= 15 then
+		commonText = "Common: 0%"
+		rareText = "Rare: 0%"
+		legText = 'Legendary: <font color="#FF5555">100%</font>' -- Nhuộm màu đỏ cam
+	elseif rareCount >= 8 then
+		commonText = "Common: 0%"
+		rareText = 'Rare: <font color="#FFD700">100%</font>' -- Nhuộm màu vàng rực
+		legText = "Legendary: 0%"
+	else
+		-- 2. Trường hợp mặc định hoặc kích hoạt bảo hiểm mềm (Soft Pity)
+		local commonWeight = 80
+		local rareWeight = 15
+		local legWeight = 5
+
+		local isLegSoft = legCount >= 10
+		local isRareSoft = rareCount >= 5
+
+		if isLegSoft then
+			legWeight = 25
+			commonWeight = commonWeight - 20
+		end
+
+		if isRareSoft then
+			rareWeight = 35
+			commonWeight = commonWeight - 20
+		end
+
+		-- Đóng gói chuỗi văn bản thuần túy kết hợp RichText đổi màu con số
+		commonText = "Common: " .. commonWeight .. "%"
+		
+		if isRareSoft then
+			rareText = 'Rare: <font color="#FFD700">' .. rareWeight .. '%</font>'
+		else
+			rareText = "Rare: " .. rareWeight .. "%"
+		end
+
+		if isLegSoft then
+			legText = 'Legendary: <font color="#FF5555">' .. legWeight .. '%</font>'
+		else
+			legText = "Legendary: " .. legWeight .. "%"
+		end
+	end
+
+	-- Kích hoạt RichText
+	CommonText.RichText = true
+	RareText.RichText = true
+	LegendaryText.RichText = true
+
+	-- Gán dữ liệu lên màn hình
+	CommonText.Text = commonText
+	RareText.Text = rareText
+	LegendaryText.Text = legText
 end
 
 -- Ban đầu ẩn các bảng đi
@@ -201,11 +247,11 @@ local function refreshInventoryUI()
 	
 	-- BƯỚC C: THUẬT TOÁN SẮP XẾP NÂNG CAO (Theo độ hiếm trước -> Theo tên bảng chữ cái sau)
 	table.sort(uniqueInventory, function(a, b)
-		local rarityA = PetClass.GetRarity(a)
-		local rarityB = PetClass.GetRarity(b)
+		local rarityA = PetConfig.GetRarity(a)
+		local rarityB = PetConfig.GetRarity(b)
 		
-		local weightA = PetClass.RARITY_WEIGHTS[rarityA] or 4
-		local weightB = PetClass.RARITY_WEIGHTS[rarityB] or 4
+		local weightA = PetConfig.RARITY_WEIGHTS[rarityA] or 4
+		local weightB = PetConfig.RARITY_WEIGHTS[rarityB] or 4
 		
 		if weightA == weightB then
 			-- NẾU CÙNG ĐỘ HIẾM: Sắp xếp theo tên chữ cái (Ví dụ: Common1 đứng trước Common2)
@@ -239,35 +285,31 @@ local function refreshInventoryUI()
 		slot.Name = petName
 		slot.Visible = true
 		
-		-- ✨ ĐIỀU KIỆN VÀNG: Chỉ nạp lại mô hình 3D nếu là ô mới tạo hoặc chưa có PetView
+		-- ĐIỀU KIỆN VÀNG: Chỉ nạp lại mô hình 3D nếu là ô mới tạo hoặc chưa có PetView
 		-- Giúp giữ nguyên ViewportFrame cũ đang xoay lơ lửng, không bị reset góc quay!
 		local viewport = slot:FindFirstChild("PetView")
 		if isNewSlot or not viewport or not viewport:FindFirstChild(petName) then
 			renderPetToSlot(slot, petName)
 		end
 		
-		-- 🎯 CẬP NHẬT SỐ LƯỢNG PET: Định dạng "x" + số lượng (ví dụ: x12)
+		-- CẬP NHẬT SỐ LƯỢNG PET: Định dạng "x" + số lượng (ví dụ: x12)
 		local count = petCounts[petName]
 		local amountText = slot:FindFirstChild("AmountText")
 		if amountText and amountText:IsA("TextLabel") then
 			amountText.Text = "x" .. tostring(count)
 		end
 		
-		-- 🎯 CẬP NHẬT ẢNH NỀN THEO ĐỘ HIẾM: Tìm StringValue tương ứng trong PetConfig
-		local rarity = PetClass.GetRarity(petName)
-		local sharedFolder = ReplicatedStorage:WaitForChild("Shared")
-		local petConfigFolder = sharedFolder:WaitForChild("PetConfig", 2)
-		if petConfigFolder then
-			local targetStringValue = petConfigFolder:FindFirstChild(rarity .. "BG")
-			if targetStringValue and targetStringValue:IsA("StringValue") then
-				local bgSlot = slot:FindFirstChild("Bg_Slot")
-				if bgSlot and bgSlot:IsA("ImageLabel") then
-					bgSlot.Image = targetStringValue.Value
-				end
+		-- CẬP NHẬT ẢNH NỀN THEO ĐỘ HIẾM: Đọc trực tiếp từ bảng RARITY_BG trong PetConfig
+		local rarity = PetConfig.GetRarity(petName)
+		local bgImage = PetConfig.RARITY_BG[rarity]
+		if bgImage then
+			local bgSlot = slot:FindFirstChild("Bg_Slot")
+			if bgSlot and bgSlot:IsA("ImageLabel") then
+				bgSlot.Image = bgImage
 			end
 		end
 		
-		-- 🎯 CẬP NHẬT TRẠNG THÁI TRANG BỊ TRỰC TIẾP
+		-- CẬP NHẬT TRẠNG THÁI TRANG BỊ TRỰC TIẾP
 		local border = slot:FindFirstChild("Border")
 		local tag = slot:FindFirstChild("EquippedTag")
 		
@@ -279,7 +321,7 @@ local function refreshInventoryUI()
 			if tag then tag.Visible = false end
 		end
 		
-		-- ⚡ LÀM SẠCH VÀ GẮN LẠI SỰ KIỆN CLICK (Dùng cơ chế Disconnect thay vì Destroy nút giúp mượt mà hơn)
+		-- LÀM SẠCH VÀ GẮN LẠI SỰ KIỆN CLICK (Dùng cơ chế Disconnect thay vì Destroy nút giúp mượt mà hơn)
 		local equipBtn = slot:FindFirstChild("EquipBtn")
 		if equipBtn then
 			-- Nếu đã có kết nối cũ thì ngắt đi để tránh lặp sự kiện
@@ -370,7 +412,7 @@ local function renderEggToShop()
 		local centerPos = modelCFrame.Position
 		local radius = modelSize.Magnitude * 1.3 -- Khoảng cách camera lùi ra xa vừa đủ ôm trọn quả trứng
 		
-		-- 🎯 ĐẶT CAMERA GÓC TĨNH CỐ ĐỊNH (KHÔNG DÙNG RENDERSTEPPED)
+		-- ĐẶT CAMERA GÓC TĨNH CỐ ĐỊNH (KHÔNG DÙNG RENDERSTEPPED)
 		-- Đặt camera chếch về phía trước (trục Z) và hơi cao hơn tâm quả trứng một chút (trục Y)
 		cam.CFrame = CFrame.new(
 			centerPos + Vector3.new(0, modelSize.Y * 0.2, radius), 
@@ -418,27 +460,27 @@ end
 -- Cấu hình sự kiện bấm nút HUD đóng mở bảng
 ShopBtn.Activated:Connect(function()
 	playClickSFX()
-	toggleFrame(ShopFrame, shopFrameOriginalSize)
+	toggleFrame(ShopFrame, SHOP_FRAME_ORIGINAL_SIZE)
 	if ShopFrame.Visible then
 		-- Tự động đóng Inventory khi mở Shop
 		if InventoryFrame.Visible then
-			toggleFrame(InventoryFrame, inventoryFrameOriginalSize)
+			toggleFrame(InventoryFrame, INVENTORY_FRAME_ORIGINAL_SIZE)
 		end
 	end
 end)
 
 InvBtn.Activated:Connect(function()
 	playClickSFX()
-	toggleFrame(InventoryFrame, inventoryFrameOriginalSize)
+	toggleFrame(InventoryFrame, INVENTORY_FRAME_ORIGINAL_SIZE)
 	if InventoryFrame.Visible then
 		-- Tự động đóng Shop khi mở Inventory
 		if ShopFrame.Visible then
-			toggleFrame(ShopFrame, shopFrameOriginalSize)
+			toggleFrame(ShopFrame, SHOP_FRAME_ORIGINAL_SIZE)
 		end
 	end
 end)
 
--- 🖲️ HIỆU ỨNG HOVER & PRESS CHỈ ĐỔI MÀU CHO NÚT ĐÓNG (KHÔNG SCALE)
+-- ️ HIỆU ỨNG HOVER & PRESS CHỈ ĐỔI MÀU CHO NÚT ĐÓNG (KHÔNG SCALE)
 local function tweenCloseButtonColor(button, targetColor)
 	local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	TweenService:Create(button, tweenInfo, { ImageColor3 = targetColor }):Play()
@@ -495,8 +537,8 @@ local function setupHUDButtonEffects(button)
 end
 
 -- Thiết lập hiệu ứng và sự kiện cho cả 2 nút đóng của Kho hàng và Cửa hàng
-setupCloseButtonEffects(BtnCloseInventory, InventoryFrame, inventoryFrameOriginalSize)
-setupCloseButtonEffects(BtnCloseShop, ShopFrame, shopFrameOriginalSize)
+setupCloseButtonEffects(BtnCloseInventory, InventoryFrame, INVENTORY_FRAME_ORIGINAL_SIZE)
+setupCloseButtonEffects(BtnCloseShop, ShopFrame, SHOP_FRAME_ORIGINAL_SIZE)
 
 -- Thiết lập hiệu ứng Hover/Press cho các nút trên HUD
 setupHUDButtonEffects(ShopBtn)
@@ -509,16 +551,84 @@ BuyEggBtn.Activated:Connect(function()
 end)
 
 -- Lắng nghe kết quả mở trứng thành công từ Server và chạy cắt cảnh 3D
-OpenEggEvent.OnClientEvent:Connect(function(petName, rarity)
-	print("✨ [UI] Server báo trúng chú Pet: " .. petName .. " [" .. rarity .. "]")
+OpenEggEvent.OnClientEvent:Connect(function(petName, rarity, rareCount, legCount)
+	print(" [UI] Server báo trúng chú Pet: " .. petName .. " [" .. rarity .. "]")
 	
 	-- Chạy hiệu ứng cắt cảnh mở trứng 3D ngoài không gian ảo
 	CutsceneController.Play(petName, rarity, ShopFrame, InventoryFrame, refreshInventoryUI)
+	
+	-- Cập nhật lại tỷ lệ Gacha dựa theo chỉ số Pity mới của người chơi
+	if rareCount and legCount then
+		updateRatePanelUI(rareCount, legCount)
+	end
 end)
 
--- Khởi động lần đầu: đồng bộ và hiển thị số tiền Coins, tự động phát BGM và tỷ lệ Gacha
+--[[
+	Hàm tải trước tài nguyên (Asset Preloading)
+	Tải hình ảnh slot UI, bệ hào quang Aura và các tệp âm thanh SFX vào bộ nhớ VRAM của client
+	để tránh hiện tượng lag hiển thị hoặc trễ âm thanh khi chạy game.
+]]
+local function preloadAssets()
+	local assets = ReplicatedStorage:WaitForChild("Assets")
+	local sfxFolder = assets:WaitForChild("SFXs")
+	local assetsToPreload = {}
+
+	-- 1. Thêm các âm thanh SFX gốc vào hàng đợi
+	if sfxFolder then
+		for _, sound in ipairs(sfxFolder:GetChildren()) do
+			if sound:IsA("Sound") then
+				table.insert(assetsToPreload, sound)
+			end
+		end
+	end
+
+	-- 2. Thêm ảnh nền khung slot trong túi đồ (Rarity BG)
+	for _, imageId in pairs(PetConfig.RARITY_BG) do
+		if imageId and imageId ~= "" then
+			local tempImage = Instance.new("ImageLabel")
+			tempImage.Image = imageId
+			table.insert(assetsToPreload, tempImage)
+		end
+	end
+
+	-- 3. Thêm ảnh bệ hào quang Aura của từng loại Pet
+	for _, petData in pairs(PetConfig.Pets) do
+		if petData.AuraId and petData.AuraId ~= "" then
+			local tempDecal = Instance.new("Decal")
+			tempDecal.Texture = petData.AuraId
+			table.insert(assetsToPreload, tempDecal)
+		end
+	end
+
+	-- 4. Thực thi tải bất đồng bộ bằng ContentProvider
+	task.spawn(function()
+		local startTime = os.clock()
+		local success, err = pcall(function()
+			ContentProvider:PreloadAsync(assetsToPreload)
+		end)
+		
+		if success then
+			local duration = string.format("%.2f", os.clock() - startTime)
+			print(" [Preload System] Tải trước hoàn tất! Đã nạp " .. #assetsToPreload .. " tài nguyên vào VRAM trong " .. duration .. "s.")
+		else
+			warn("️ [Preload System] Lỗi tải trước tài nguyên: " .. tostring(err))
+		end
+
+		-- Giải phóng các thực thể tạm để tiết kiệm RAM
+		for _, tempInstance in ipairs(assetsToPreload) do
+			if tempInstance:IsA("ImageLabel") or tempInstance:IsA("Decal") then
+				tempInstance:Destroy()
+			end
+		end
+	end)
+end
+
+-- Khởi động lần đầu: đồng bộ số tiền Coins, tự động phát BGM, tải trước tài nguyên và thiết lập tỷ lệ Gacha
 task.spawn(function()
-	-- 🎵 KÍCH HOẠT NHẠC NỀN BACKGROUND TỰ ĐỘNG KHI CHƠI GAME
+	-- Kích hoạt tải trước tài nguyên
+	preloadAssets()
+	
+	-- KÍCH HOẠT NHẠC NỀN BACKGROUND TỰ ĐỘNG KHI CHƠI GAME
 	local assets = ReplicatedStorage:WaitForChild("Assets")
 	local sfxFolder = assets:WaitForChild("SFXs")
 	local soundServiceBGM = SoundService:FindFirstChild("Background")
@@ -533,12 +643,15 @@ task.spawn(function()
 		soundServiceBGM:Play()
 	end
 	
-	-- Khởi tạo bảng tỷ lệ phần trăm mở trứng trên UI Shop
-	initializeGachaRatesUI()
+	-- Khởi tạo ban đầu với tỷ lệ mặc định (0, 0)
+	updateRatePanelUI(0, 0)
 	
 	task.wait(0.5)
 	local data = GetInventory:InvokeServer()
 	if data then
 		CoinsLabel.Text = formatNumber(data.Coins)
+		-- Đồng bộ bảng tỷ lệ chính xác từ dữ liệu load DataStore của người chơi
+		updateRatePanelUI(data.RarePityCount or 0, data.LegendaryPityCount or 0)
 	end
 end)
+

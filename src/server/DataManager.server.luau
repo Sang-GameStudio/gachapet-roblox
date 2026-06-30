@@ -6,14 +6,16 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 -- Tạo hoặc lấy DataStore tên là "PlayerSaveData_v1"
-local PlayerDataStore = DataStoreService:GetDataStore("PlayerSaveData_v2") -- Tăng version lên v2 để reset data cũ khi test, đảm bảo Coins được nhận là 100,000
+local playerDataStore = DataStoreService:GetDataStore("PlayerSaveData_v2") -- Tăng version lên v2 để reset data cũ khi test, đảm bảo Coins được nhận là 100,000
 local Players = game:GetService("Players")
 
 -- Cấu hình mặc định cho người chơi mới (Đã tăng mặc định Coins lên 100,000 để phục vụ test Gacha)
 local DEFAULT_DATA = {
 	Coins = 100000,
 	Inventory = { "Common1" },
-	EquippedPet = "Common1"
+	EquippedPet = "Common1",
+	RarePityCount = 0,       -- Số lần hụt Rare tích lũy
+	LegendaryPityCount = 0   -- Số lần hụt Legendary tích lũy
 }
 
 -- RAM Cache trên Server để truy cập nhanh chóng
@@ -34,6 +36,34 @@ end
 ]]
 function shared.DataManager.IsLoaded(player)
 	return sessionData[player.UserId] ~= nil
+end
+
+--[[
+	Hàm tăng đếm Pity (số lần hụt) cho từng loại độ hiếm
+]]
+function shared.DataManager.IncrementPity(player, rarityType)
+	local data = sessionData[player.UserId]
+	if data then
+		if rarityType == "Rare" then
+			data.RarePityCount = (data.RarePityCount or 0) + 1
+		elseif rarityType == "Legendary" then
+			data.LegendaryPityCount = (data.LegendaryPityCount or 0) + 1
+		end
+	end
+end
+
+--[[
+	Hàm reset đếm Pity về 0 khi người chơi trúng được Pet tương ứng
+]]
+function shared.DataManager.ResetPity(player, rarityType)
+	local data = sessionData[player.UserId]
+	if data then
+		if rarityType == "Rare" then
+			data.RarePityCount = 0
+		elseif rarityType == "Legendary" then
+			data.LegendaryPityCount = 0
+		end
+	end
 end
 
 --[[
@@ -111,7 +141,7 @@ local function onPlayerAdded(player)
 
 	-- Gọi DataStore bằng pcall vì đây là API call qua internet có thể thất bại
 	local success, savedData = pcall(function()
-		return PlayerDataStore:GetAsync(playerKey)
+		return playerDataStore:GetAsync(playerKey)
 	end)
 	
 	if success and savedData then
@@ -119,7 +149,9 @@ local function onPlayerAdded(player)
 		sessionData[userId] = {
 			Coins = tonumber(savedData.Coins) or DEFAULT_DATA.Coins,
 			Inventory = savedData.Inventory or { unpack(DEFAULT_DATA.Inventory) },
-			EquippedPet = savedData.EquippedPet -- Có thể nil nếu không trang bị gì
+			EquippedPet = savedData.EquippedPet, -- Có thể nil nếu không trang bị gì
+			RarePityCount = savedData.RarePityCount or DEFAULT_DATA.RarePityCount,
+			LegendaryPityCount = savedData.LegendaryPityCount or DEFAULT_DATA.LegendaryPityCount
 		}
 		print("Tải dữ liệu thành công cho: " .. player.Name)
 	else
@@ -127,7 +159,9 @@ local function onPlayerAdded(player)
 		sessionData[userId] = {
 			Coins = DEFAULT_DATA.Coins,
 			Inventory = { unpack(DEFAULT_DATA.Inventory) },
-			EquippedPet = DEFAULT_DATA.EquippedPet
+			EquippedPet = DEFAULT_DATA.EquippedPet,
+			RarePityCount = DEFAULT_DATA.RarePityCount,
+			LegendaryPityCount = DEFAULT_DATA.LegendaryPityCount
 		}
 		warn("Người chơi mới hoặc lỗi tải dữ liệu. Sử dụng dữ liệu mặc định cho: " .. player.Name)
 	end
@@ -148,7 +182,7 @@ local function savePlayerData(player)
 		
 		-- Sử dụng UpdateAsync vì nó an toàn hơn SetAsync trong việc tránh xung đột ghi đè
 		local success, err = pcall(function()
-			PlayerDataStore:UpdateAsync(playerKey, function(oldValue)
+			playerDataStore:UpdateAsync(playerKey, function(oldValue)
 				-- Trả về dữ liệu hiện tại để ghi đè lên cloud
 				return data
 			end)
@@ -210,7 +244,7 @@ local function startAutosaveLoop()
 					end
 				end
 				
-				-- 🔥 BÍ QUYẾT CỐT LÕI: Nghỉ 2 giây trước khi tiến hành lưu người chơi tiếp theo
+				--  BÍ QUYẾT CỐT LÕI: Nghỉ 2 giây trước khi tiến hành lưu người chơi tiếp theo
 				task.wait(DELAY_BETWEEN_PLAYERS)
 			end
 		end
