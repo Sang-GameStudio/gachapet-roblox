@@ -1,6 +1,12 @@
 # Tài liệu Kỹ thuật Dự án Roblox Pet Gacha & Follow System
 
-Dự án này là bài test năng lực gameplay developer, xây dựng một hệ thống hoàn chỉnh từ Gacha mở trứng, quản lý túi đồ (Inventory), trang bị Pet, cơ chế bám đuôi mượt mà và tối ưu bảo mật chống exploit dữ liệu.
+## 🔗 Liên kết Tài nguyên Dự án (Quick Links)
+
+* **Video Demo:** [YouTube](https://youtu.be/AtLpD9-X1p4)
+* **Mã nguồn dự án:** [GitHub](https://github.com/Sang-GameStudio/gachapet-roblox)
+* **Sơ đồ Kiến trúc:** [Google Drive Draw.io](https://drive.google.com/file/d/1FGgBzuLqnX_ZK_xYuepjx5m1ruFwZLuD/view?usp=sharing) hoặc xem trực tiếp tại [Mục II.3](#3-sơ-đồ-kiến-trúc-hệ-thống-tổng-quan-system-architecture-diagram)
+* **Bản thiết kế UI:** [Figma](https://www.figma.com/design/wq9Vi0MmetB7mxZuE4Ke3A/-Roblox---GachaPet?node-id=0-1&t=Yxb2LYC5m82kQ3hx-1)
+* **Kế hoạch Triển khai:** [Google Docs](https://docs.google.com/document/d/1YcupYS4-5Xi90fmLho4k9iSuRRGZh_Fp7SCAeA0GUeI/edit?usp=sharing)
 
 ---
 
