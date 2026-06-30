@@ -5,8 +5,15 @@
 ]]
 
 local DataStoreService = game:GetService("DataStoreService")
--- Tạo hoặc lấy DataStore tên là "PlayerSaveData_v1"
-local playerDataStore = DataStoreService:GetDataStore("PlayerSaveData_v2") -- Tăng version lên v2 để reset data cũ khi test, đảm bảo Coins được nhận là 100,000
+
+local playerDataStore
+local datastoreSuccess, datastoreErr = pcall(function()
+	playerDataStore = DataStoreService:GetDataStore("PlayerSaveData_v2")
+end)
+if not datastoreSuccess then
+	warn("⚠️ [DataManager] Không thể kết nối DataStore (Game chưa được Publish hoặc chưa bật API): " .. tostring(datastoreErr))
+end
+
 local Players = game:GetService("Players")
 
 -- Cấu hình mặc định cho người chơi mới (Đã tăng mặc định Coins lên 100,000 để phục vụ test Gacha)
