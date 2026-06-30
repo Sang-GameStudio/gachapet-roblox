@@ -49,7 +49,7 @@ end
 -- Duyệt cấu hình thông minh cho dải hạt (Tách biệt riêng cho Common, Rare lẫn Legendary)
 function VFXManager.SetupVFX(vfxClone, rarity)
 	if rarity == "Legendary" then
-		-- ⚡ HIỆU ỨNG LEGENDARY (G - CHARGE)
+		--  HIỆU ỨNG LEGENDARY (G - CHARGE)
 		for _, child in ipairs(vfxClone:GetDescendants()) do
 			if child:IsA("ParticleEmitter") then
 				if child.Name == "Main Core" or child.Name == "Core" then
@@ -64,7 +64,7 @@ function VFXManager.SetupVFX(vfxClone, rarity)
 			end
 		end
 	elseif rarity == "Rare" then
-		-- 🌟 HIỆU ỨNG RARE (B - TREASURE)
+		--  HIỆU ỨNG RARE (B - TREASURE)
 		for _, child in ipairs(vfxClone:GetDescendants()) do
 			if child:IsA("ParticleEmitter") then
 				if child.Name == "Core" or child.Name == "Glowing Core" then
@@ -79,7 +79,7 @@ function VFXManager.SetupVFX(vfxClone, rarity)
 			end
 		end
 	else
-		-- ✨ HIỆU ỨNG COMMON / MẶC ĐỊNH (E - GLOW)
+		--  HIỆU ỨNG COMMON / MẶC ĐỊNH (E - GLOW)
 		for _, child in ipairs(vfxClone:GetDescendants()) do
 			if child:IsA("ParticleEmitter") then
 				if child.Name == "Glowing Core" or child.Name == "Core" then

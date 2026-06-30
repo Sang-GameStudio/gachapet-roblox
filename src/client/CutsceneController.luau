@@ -14,7 +14,7 @@ local VFXManager = require(script.Parent:WaitForChild("VFXManager"))
 
 local CutsceneController = {}
 
--- 🔊 HÀM PHÁT SFX NGẮN (One-shot SFX): Tự động tìm kiếm, nhân bản và tự giải phóng bộ nhớ khi phát xong
+-- HÀM PHÁT SFX NGẮN (One-shot SFX): Tự động tìm kiếm, nhân bản và tự giải phóng bộ nhớ khi phát xong
 local function playSFX(soundName)
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local sfxFolder = assets and assets:FindFirstChild("SFXs")
@@ -69,7 +69,7 @@ function CutsceneController.Play(petName, rarity, shopFrame, inventoryFrame, ref
 	-- Mảng lưu trữ quản lý các asset ảo ngoài không gian sky
 	local activeVFXs = {}
 	
-	-- 🎵 1. ĐẢM BẢO BACKGROUND BGM HOẠT ĐỘNG:
+	-- 1. ĐẢM BẢO BACKGROUND BGM HOẠT ĐỘNG:
 	-- Đảm bảo bản nhạc nền Background được clone sang SoundService để phát nghe thấy được
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local sfxFolder = assets and assets:FindFirstChild("SFXs")
@@ -106,7 +106,7 @@ function CutsceneController.Play(petName, rarity, shopFrame, inventoryFrame, ref
 	local eggRotation = eggTemplate:IsA("Model") and eggTemplate:GetPivot().Rotation or eggTemplate.CFrame.Rotation
 	setInstanceCFrame(eggClone, CFrame.new(cutscenePos + Vector3.new(0, 1.5, 0)) * eggRotation)
 	
-	-- 🍳 4. GIAI ĐOẠN 1: KHỞI CHẠY VÒNG LẶP ÂM THANH RUNG TRỨNG
+	-- 4. GIAI ĐOẠN 1: KHỞI CHẠY VÒNG LẶP ÂM THANH RUNG TRỨNG
 	local activeEggSound = nil
 	local eggSoundTemplate = sfxFolder and sfxFolder:FindFirstChild("Egg")
 	if eggSoundTemplate and eggSoundTemplate:IsA("Sound") then
@@ -127,7 +127,7 @@ function CutsceneController.Play(petName, rarity, shopFrame, inventoryFrame, ref
 		task.wait()
 	end
 	
-	-- 🛑 5. KẾT THÚC GIAI ĐOẠN 1: Ngắt dứt điểm âm thanh Egg trước khi nổ phá cảnh
+	-- 5. KẾT THÚC GIAI ĐOẠN 1: Ngắt dứt điểm âm thanh Egg trước khi nổ phá cảnh
 	if activeEggSound then
 		activeEggSound:Stop()
 		activeEggSound:Destroy()
@@ -178,7 +178,7 @@ function CutsceneController.Play(petName, rarity, shopFrame, inventoryFrame, ref
 		local popTween = TweenService:Create(popValue, popTweenInfo, {Value = 1})
 		popTween:Play()
 		
-		-- 👑 ĐÚNG YÊU CẦU: Gọi tên SFX chúc mừng trùng khớp hoàn toàn với tên độ hiếm (Common/Rare/Legendary)
+		-- ĐÚNG YÊU CẦU: Gọi tên SFX chúc mừng trùng khớp hoàn toàn với tên độ hiếm (Common/Rare/Legendary)
 		playSFX(rarity)
 		
 		-- Lắng nghe tương tác click chuột / chạm màn hình để thoát
@@ -190,7 +190,7 @@ function CutsceneController.Play(petName, rarity, shopFrame, inventoryFrame, ref
 			end
 		end)
 		
-		-- 🔄 VÒNG LẶP IDLE XOAY TRÒN: Giữ lại hiệu ứng xoay tròn nghệ thuật sinh động khi mở trứng
+		-- VÒNG LẶP IDLE XOAY TRÒN: Giữ lại hiệu ứng xoay tròn nghệ thuật sinh động khi mở trứng
 		while not userHasClicked do
 			local currentPop = popValue.Value
 			if petClone then
@@ -219,3 +219,4 @@ function CutsceneController.Play(petName, rarity, shopFrame, inventoryFrame, ref
 end
 
 return CutsceneController
+
