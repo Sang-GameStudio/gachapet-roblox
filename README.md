@@ -137,8 +137,8 @@ graph TD
     GL_Server -->|4. Deduct coins on RAM| DM_Server
     GL_Server -->|5. Spawn 3D Pet model| PM_Server
     
-    DM_Server -.->|6. Staggered Autosave (2s delay) / BindToClose| DS
-    PM_Server -.->|7. Hand over physics simulation| UI_Ctrl
+    DM_Server -.->|"6. Staggered Autosave (2s delay) / BindToClose"| DS
+    PM_Server -.->|"7. Hand over physics simulation"| UI_Ctrl
 
     %% Styling
     style Client_Layer fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px;

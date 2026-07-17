@@ -137,8 +137,8 @@ graph TD
     GL_Server -->|4. Khấu trừ xu trên RAM| DM_Server
     GL_Server -->|5. Yêu cầu sinh thực thể Pet| PM_Server
     
-    DM_Server -.->|6. Autosave 5p rải rác / BindToClose| DS
-    PM_Server -.->|7. Ủy quyền mạng vật lý| UI_Ctrl
+    DM_Server -.->|"6. Autosave 5p rải rác / BindToClose"| DS
+    PM_Server -.->|"7. Ủy quyền mạng vật lý"| UI_Ctrl
 
     %% Định dạng màu sắc trực quan cho sơ đồ
     style Client_Layer fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px;
