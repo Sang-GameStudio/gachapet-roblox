@@ -192,20 +192,20 @@ local function renderPetToSlot(slotFrame, petName)
 		end
 		
 		-- 2. Khởi tạo Camera ảo chuyên dụng
-		local cam = Instance.new("Camera")
-		cam.FieldOfView = 50 -- FOV hẹp giúp camera zoom cận cảnh nhìn rõ Pet hơn
-		viewport.CurrentCamera = cam
-		cam.Parent = viewport
+		local cam = Instance.new("Camera") --1. Đúc 1 chiếc Camera ảo mới trên RAM
+		cam.FieldOfView = 50 -- 2. FOV hẹp giúp camera zoom cận cảnh nhìn rõ Pet hơn
+		viewport.CurrentCamera = cam -- 3. Ép ô UI viewport sử dụng chiệc camera này để nhìn mô hình
+		cam.Parent = viewport -- 4. Gắn camera vào cây thư mục của ô UI
 		
 		-- 3. Thiết lập Camera ảo hướng thẳng vào mặt Pet (Đứng yên không xoay để tối ưu hiệu năng)
-		local modelCFrame, modelSize = petClone:GetBoundingBox()
-		local centerPos = modelCFrame.Position
+		local modelCFrame, modelSize = petClone:GetBoundingBox() -- GetBoundingBox(): đúc sẵn tính toán ra 1 chiếc hộp không gian vô hình ôm trọn pet, trả về modelCFrame (tọa độ không gian khối tâm) và modelSize (kích thước 3 chiều rộng-cao-dài của pet)
+		local centerPos = modelCFrame.Position -- centerPos: Điểm trọng tâm chính xác nằm giữa lòng con pet
 		
-		local radius = modelSize.Magnitude * 1.5 -- Khoảng cách camera dựa theo kích thước Pet
-		local height = modelSize.Y * 0.5 -- Chiều cao đặt camera (nhìn xéo nhẹ từ trên xuống)
+		local radius = modelSize.Magnitude * 1.5 -- Khoảng cách camera dựa theo kích thước Pet ( độ dài đường chéo hộp nhân hệ số gốc rộng lùi ra xa)
+		local height = modelSize.Y * 0.5 -- Chiều cao đặt camera (nhìn xéo nhẹ từ trên xuống) --> Độ cao đặt camera = 1 nửa chiều cao của pet
 		
 		cam.CFrame = CFrame.new(
-			centerPos + Vector3.new(0, height, -radius),
+			centerPos + Vector3.new(0, height, -radius), -- vị trí đặt camera ( lùi xa trục Z 1 đoạn radius, nâng cao trục Y 1 đoạn)
 			centerPos -- Luôn luôn hướng góc nhìn thẳng vào tâm Pet
 		)
 	end
@@ -215,7 +215,7 @@ end
 	Hàm làm mới và đồng bộ dữ liệu giao diện túi đồ từ Server
 ]]
 -- Bảng lưu trữ kết nối sự kiện click nút trang bị để dọn dẹp tránh trùng lặp/rò rỉ bộ nhớ
-local buttonConnections = {}
+local buttonConnections = {} -- Bảng dictionary lưu trữ trên RAM
 
 --[[
 	Hàm làm mới và đồng bộ dữ liệu giao diện túi đồ từ Server
@@ -350,11 +350,11 @@ local function refreshInventoryUI()
 			local oldSlot = existingSlots[i]
 			if oldSlot then
 				-- Giải phóng kết nối nút bấm tương ứng trước khi xóa
-				if buttonConnections[oldSlot] then
-					buttonConnections[oldSlot]:Disconnect()
-					buttonConnections[oldSlot] = nil
+				if buttonConnections[oldSlot] then 
+					buttonConnections[oldSlot]:Disconnect() -- 1. tắt công tắc kết nối, truyền tín hiệu click chuột
+					buttonConnections[oldSlot] = nil -- 2. gắn nil --> báo hiệu cho Garbage Collector tự động dọn rác trên RAM
 				end
-				oldSlot:Destroy()
+				oldSlot:Destroy() -- 3. Xóa ô UI ngoài màn hình, don sạch dữ liệu hình ảnh (VRAM)
 			end
 		end
 	end

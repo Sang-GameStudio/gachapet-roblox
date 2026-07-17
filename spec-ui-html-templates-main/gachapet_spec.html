@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GaChaPet - Technical System Spec Docs</title>
+    <meta name="ai-context" content="design-system" />
+    <meta name="ai-version" content="1.6" />
+    <meta name="ai-usage" content="Tài liệu đặc tả hệ thống kỹ thuật của dự án Roblox GaChaPet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Template Quy tắc AI -->
+    <template id="ai-ruleset">
+      ## AI RULESET v1.6 — ĐỌC TRƯỚC KHI TẠO HTML
+      - Chỉ dùng class có trong styles.css
+      - Không thêm style="" inline bất kỳ chỗ nào
+      - Chỉ trả về HTML fragment hoặc trang thiết kế đồng bộ
+    </template>
+
+    <!-- Header Hero Banner -->
+    <header class="hero">
+      <div class="container hero-inner">
+        <p class="eyebrow">Roblox Game Spec & Documentation</p>
+        <h1>GaChaPet Technical Architecture</h1>
+        <p class="lead">
+          Đặc tả kỹ thuật chi tiết của dự án Roblox Pet Gacha & Follow System. Tài liệu mô tả toàn bộ cấu trúc thư mục, sơ đồ luồng dữ liệu, thuật toán bảo hiểm Pity, cơ chế vật lý bám đuôi và giải pháp bảo mật server-authoritative.
+        </p>
+        <div class="chip-row">
+          <span class="chip">Roblox Studio</span>
+          <span class="chip">Rojo Sync</span>
+          <span class="chip">Weighted Random Pity</span>
+          <span class="chip">Constraint Physics</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main>
+      <div class="container main-layout">
+        <!-- Sticky Sidebar Navigation -->
+        <aside class="sidebar">
+          <nav class="sticky-nav" id="sidebar-nav">
+            <p class="sidebar-title">Mục lục</p>
+            <ul>
+              <li><a href="#directory-structure" class="active">Cấu trúc Rojo</a></li>
+              <li><a href="#architecture">Kiến trúc Hệ thống</a></li>
+              <li><a href="#functional-flow">Sơ đồ Chức năng</a></li>
+              <li><a href="#sequence-gacha">Luồng Tuần tự Gacha</a></li>
+              <li><a href="#algorithms">Thuật toán & Pity</a></li>
+              <li><a href="#physics-techniques">Kỹ thuật & Vật lý</a></li>
+              <li><a href="#security-rules">Bảo mật & Dữ liệu</a></li>
+            </ul>
+          </nav>
+        </aside>
+
+        <!-- Content Area -->
+        <div class="content-area">
+          
+          <!-- Section 1: Cấu trúc Rojo -->
+          <section class="section" id="directory-structure" style="padding: 0 0 var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#directory-structure" class="anchor-link">#</a>
+              1. Cấu trúc Rojo & Ánh xạ Explorer
+            </h2>
+            <p>
+              Mã nguồn dự án được tổ chức và phát triển trên IDE bên ngoài, sau đó tự động đồng bộ vào Roblox Studio thông qua cấu hình Rojo. Điều này đảm bảo tính đóng gói và cho phép áp dụng các phương pháp lập trình chuyên nghiệp (Clean Code, OOP).
+            </p>
+            
+            <div class="code-wrapper">
+              <div class="code-header">
+                <span>Cấu trúc Thư mục Dự án</span>
+                <button class="btn-copy">Copy</button>
+              </div>
+              <pre class="code-block" style="margin: 0; border: none; border-radius: 0;">
+📁 project
+├── 📁 src
+│   ├── 📁 client                        -- Chạy tại máy Client (LocalScripts)
+│   │   ├── 📜 init.client.luau          -- Entry point khởi chạy nhạc nền, HUD
+│   │   ├── 📜 UIController.client.luau  -- Quản lý click nút, Tween UI, render Viewport 3D
+│   │   ├── 📜 CutsceneController.luau   -- Xử lý cắt cảnh mở trứng 3D ngoài vũ trụ
+│   │   └── 📜 VFXManager.luau           -- Tải và cấu hình tia sáng, hạt nổ theo độ hiếm
+│   │
+│   ├── 📁 server                        -- Chạy tại máy Server (Server Scripts)
+│   │   ├── 📜 init.server.luau          -- Khởi tạo server
+│   │   ├── 📜 DataManager.server.luau   -- Quản lý DataStore, RAM cache, Staggered Autosave
+│   │   └── 📜 PetManager.luau           -- Module quản lý vòng đời, vật lý và Aura của Pet
+│   │   └── 📜 GameLogic.server.luau     -- Server Script nhận mạng Remote, validate điều kiện mua/trang bị
+│   │
+│   └── 📁 shared                        -- Dùng chung cho cả Client & Server
+│       ├── 📜 PetConfig.luau            -- Single Source of Truth chứa cấu hình Pet, Rarity, AuraId
+│       └── 📜 GachaModule.luau          -- Logic quay xác suất ngẫu nhiên và tính toán Pity
+│
+└── 📜 default.project.json             -- File cấu hình ánh xạ thư mục của Rojo</pre>
+            </div>
+          </section>
+
+          <!-- Section 2: Kiến trúc Hệ thống -->
+          <section class="section" id="architecture" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#architecture" class="anchor-link">#</a>
+              2. Kiến trúc Phân tách Trách nhiệm
+            </h2>
+            <p>
+              Hệ thống áp dụng nguyên lý <strong>SOLID</strong> (đặc biệt là Đơn nhiệm - Single Responsibility) để phân rã nhiệm vụ rõ ràng giữa các Layer Client - Server, đảm bảo mã nguồn dễ bảo trì và mở rộng.
+            </p>
+            
+            <div class="grid-3">
+              <div class="card">
+                <span class="badge get">Client Layer</span>
+                <h3 style="margin-top: var(--space-2);">Hiển thị & Hiệu ứng</h3>
+                <p style="font-size: 0.9rem; color: var(--muted);">
+                  Chỉ đảm nhiệm giao tiếp người dùng, bắt sự kiện click UI, chạy Tween phóng to/thu nhỏ hòm đồ, hiển thị Pet 3D trên ô chứa bằng Viewport và kích hoạt hiệu ứng rung lắc trứng.
+                </p>
+              </div>
+              <div class="card">
+                <span class="badge post">Server Layer</span>
+                <h3 style="margin-top: var(--space-2);">Logic Gốc & Xác thực</h3>
+                <p style="font-size: 0.9rem; color: var(--muted);">
+                  Kiểm duyệt toàn bộ yêu cầu giao dịch trên RAM Cache. Tính toán logic chuyển dịch vật lý của Pet, gán Network Owner về Client để loại bỏ độ trễ và kích hoạt vòng lặp lưu dữ liệu tự động.
+                </p>
+              </div>
+              <div class="card">
+                <span class="badge put">Shared Layer</span>
+                <h3 style="margin-top: var(--space-2);">Single Source of Truth</h3>
+                <p style="font-size: 0.9rem; color: var(--muted);">
+                  Chứa tệp cấu hình tập trung cho toàn bộ Pet (độ hiếm, liên kết bệ hào quang). Cung cấp thuật toán nội suy ngẫu nhiên có trọng số dùng chung để cả hai phía Client-Server đồng bộ hiển thị.
+                </p>
+              </div>
+            </div>
+
+            <div class="callout info" style="margin-top: var(--space-3);">
+              <strong>Kiến thức áp dụng:</strong> Nguyên tắc bất di bất dịch trong thiết kế mạng Roblox: <em>Client chỉ là tầng hiển thị (Presentation), Server giữ toàn quyền quyết định (Authoritative).</em> Tuyệt đối không tin cậy dữ liệu truyền lên từ phía Client để chống hack Coins hoặc giả mạo trúng Pet Rare.
+            </div>
+
+            <h3 style="margin-top: var(--space-4); margin-bottom: var(--space-2);">3. Sơ đồ Kiến trúc Hệ thống Tổng quan (System Architecture Diagram)</h3>
+            <p>
+              Sơ đồ khối dưới đây thể hiện mối quan hệ liên kết, phân tách trách nhiệm giữa các layer Client - Server và cách các hệ thống/tính năng cốt lõi giao tiếp với nhau trong dự án:
+            </p>
+            
+            <div class="diagram-wrapper">
+              <pre class="mermaid">
+graph TD
+    %% Máy Client Layer
+    subgraph Client_Layer [MÁY CLIENT - LAYER HIỂN THỊ & HIỆU ỨNG]
+        UI_HUD[HUD Frame <br> Nút Shop & Inventory] --> UI_Ctrl[UIController.client.luau <br> Điều khiển Giao diện]
+        UI_Ctrl --> Cutscene[CutsceneController.luau <br> Cắt cảnh mở trứng]
+        UI_Ctrl --> VFX_Mgr[VFXManager.luau <br> Khởi tạo hạt & SFX]
+    end
+
+    %% Cầu nối mạng
+    subgraph Network_Bridge [TẦNG LIÊN KẾT MẠNG]
+        RE_Gacha[OpenEggEvent <br> RemoteEvent]
+    end
+
+    %% Máy Server Layer
+    subgraph Server_Layer [MÁY SERVER - LAYER LOGIC GỐC]
+        GL_Server[GameLogic.server.luau <br> Bộ định tuyến Router & Kiểm duyệt]
+        DM_Server[DataManager.server.luau <br> RAM Session Cache & API]
+        PM_Server[PetManager.luau <br> Quản lý vòng đời & Aura Pet]
+    end
+
+    %% Tầng Dữ liệu dùng chung và Cloud
+    subgraph Shared_Layer [SHARED DATA - DATA DRIVEN]
+        Config[PetConfig.luau <br> Single Source of Truth]
+        Gacha_Mod[GachaModule.luau <br> Ma trận xác suất Pity]
+    end
+
+    subgraph Cloud_Database [ROBLOX CLOUD STORAGE]
+        DS[DataStoreService <br> PlayerSaveData_v2]
+    end
+
+    %% Dòng chảy liên kết hệ thống
+    UI_Ctrl -->|1. Gửi yêu cầu mở trứng| RE_Gacha
+    RE_Gacha -->|2. Đón nhận mạng| GL_Server
+    
+    GL_Server -->|3. Gọi xử lý xác suất| Gacha_Mod
+    Gacha_Mod -->|Đọc hằng số tỷ lệ| Config
+    
+    GL_Server -->|4. Khấu trừ xu trên RAM| DM_Server
+    GL_Server -->|5. Yêu cầu sinh thực thể Pet| PM_Server
+    
+    DM_Server -.->|6. Autosave 5p rải rác / BindToClose| DS
+    PM_Server -.->|7. Ủy quyền mạng vật lý| UI_Ctrl
+
+    %% Định dạng màu sắc trực quan cho sơ đồ
+    style Client_Layer fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px;
+    style Server_Layer fill:#efebe9,stroke:#795548,stroke-width:2px;
+    style Network_Bridge fill:#fff3e0,stroke:#ff9800,stroke-width:2px;
+    style Shared_Layer fill:#e8f5e9,stroke:#4caf50,stroke-width:2px;
+    style Cloud_Database fill:#fce4ec,stroke:#e91e63,stroke-width:2px;
+              </pre>
+              <div class="diagram-caption">Hình 2.1: Sơ đồ khối kiến trúc hệ thống tổng quan đa tầng của GaChaPet</div>
+            </div>
+          </section>
+
+          <!-- Section 3: Sơ đồ Chức năng -->
+          <section class="section" id="functional-flow" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#functional-flow" class="anchor-link">#</a>
+              3. Sơ đồ Vòng lặp Chức năng
+            </h2>
+            <p>
+              Sơ đồ khối dưới đây mô tả hành trình trải nghiệm của người chơi từ lúc tham gia phòng game, tương tác UI, quay Gacha cho tới lúc trang bị Pet đồng hành:
+            </p>
+
+            <div class="diagram-wrapper">
+              <pre class="mermaid">
+flowchart TD
+    Start([1. Người chơi vào Game]) --> DataLoad{2. Tải Dữ liệu}
+    DataLoad -- Mới --> DefaultSetup[Cấp 100,000 Coins & Trang bị Pet Common1]
+    DataLoad -- Cũ --> LoadCache[Nạp dữ liệu cũ vào RAM Cache Server]
+    
+    DefaultSetup --> PlayLoop[3. Vòng lặp Chơi game chính]
+    LoadCache --> PlayLoop
+    
+    PlayLoop --> OpenShop[Bấm Shop: Elastic Tween phóng to UI]
+    PlayLoop --> OpenInv[Bấm Inventory: Tải danh sách Pet]
+    
+    OpenShop --> ClickGacha{Bấm Gacha trứng 100 Coins}
+    ClickGacha -->|Kiểm tra xu & Cooldown 0.8s| ServerVerify{Server xác thực}
+    
+    ServerVerify -- Không đủ xu / Spam --> Deny[Hủy yêu cầu / Cảnh báo]
+    ServerVerify -- Hợp lệ --> RollLogic[Quay Pet & Tăng/Reset chỉ số bảo hiểm Pity]
+    
+    RollLogic --> AddInventory[Lưu Pet vào Inventory RAM Cache]
+    AddInventory --> ClientCutscene[Client chạy cutscene: Rung trứng -> VFX nổ -> SFX chúc mừng]
+    ClientCutscene --> RefreshUI[Đồng bộ RichText bảng tỷ lệ Shop & làm mới túi đồ]
+    
+    OpenInv --> EquipPet[Nhấp chọn Pet: Trang bị hoặc Hủy trang bị tức thì]
+    EquipPet --> AttachPhysics[Khởi tạo mô hình vật lý kéo & Bệ Aura xoay dưới chân]
+    
+    RefreshUI --> PlayLoop
+    AttachPhysics --> PlayLoop
+              </pre>
+              <div class="diagram-caption">Hình 3.1: Sơ đồ dòng chảy chức năng tổng quan của dự án GaChaPet</div>
+            </div>
+          </section>
+
+          <!-- Section 4: Luồng Tuần tự Gacha -->
+          <section class="section" id="sequence-gacha" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#sequence-gacha" class="anchor-link">#</a>
+              4. Luồng giao tiếp mạng Tuần tự (Gacha Roll)
+            </h2>
+            <p>
+              Do Client và Server nằm trên hai thiết bị vật lý khác nhau, hệ thống sử dụng RemoteEvent (OpenEggEvent) để truyền tín hiệu bất đồng bộ. Sơ đồ tuần tự dưới đây thể hiện chính xác thời điểm dữ liệu được kiểm duyệt và hiệu ứng được phát:
+            </p>
+
+            <div class="diagram-wrapper">
+              <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Player as Player (Client UI)
+    participant LocalScript as UIController (Client)
+    participant GameLogic as GameLogic (Server)
+    participant DataManager as DataManager (Server RAM)
+    participant DataStore as DataStore (Roblox Cloud)
+
+    Player->>LocalScript: Click nút "Gacha" (100 Coins)
+    LocalScript->>GameLogic: Gửi yêu cầu qua OpenEggEvent
+    
+    activate GameLogic
+    Note over GameLogic: 1. Kiểm tra Cooldown Debounce (0.8s)<br/>2. Lấy số Coins thực từ RAM Cache
+    
+    alt Coins < 100 hoặc Spam click quá nhanh
+        GameLogic-->>LocalScript: Từ chối / Hủy bỏ request
+    else Tiền hợp lệ và hết Cooldown
+        Note over GameLogic: 3. Trừ 100 Coins trên Server RAM<br/>4. Gọi GachaModule.RollPet(player) tính toán Pity
+        GameLogic->>DataManager: Ghi dữ liệu Coins mới, tăng Pity, thêm Pet vào RAM
+        DataManager-->>GameLogic: Đồng bộ thành công
+        GameLogic-->>LocalScript: Phản hồi thông tin Pet nhận được & chỉ số Pity mới
+    end
+    deactivate GameLogic
+
+    activate LocalScript
+    Note over LocalScript: 5. Khóa UI điều khiển<br/>6. Di chuyển Camera lên bầu trời tách biệt<br/>7. Chạy Cutscene trứng lắc -> Phát nổ hạt VFX & Âm thanh chúc mừng theo độ hiếm
+    LocalScript-->>Player: Cập nhật văn bản RichText tỷ lệ mới & Hiển thị Pet 3D trong túi đồ
+    deactivate LocalScript
+
+    Note over DataManager, DataStore: Tự động lưu lên Cloud định kỳ (Autosave 5 phút rải rác) hoặc khi thoát game (BindToClose)
+              </pre>
+              <div class="diagram-caption">Hình 4.1: Sơ đồ tuần tự trao đổi dữ liệu qua mạng khi mở trứng Gacha</div>
+            </div>
+          </section>
+
+          <!-- Section 5: Thuật toán & Quy tắc Pity -->
+          <section class="section" id="algorithms" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#algorithms" class="anchor-link">#</a>
+              5. Thuật toán Quay ngẫu nhiên & Bảo hiểm kép (Pity System)
+            </h2>
+            <p>
+              Để bảo vệ trải nghiệm của người chơi và tránh việc quay hàng trăm lần không trúng Pet hiếm, hệ thống tích hợp cơ chế bảo hiểm kép độc lập bao gồm <strong>Bảo hiểm mềm (Soft Pity)</strong> và <strong>Bảo hiểm cứng (Hard Pity)</strong>:
+            </p>
+
+            <div class="table-responsive">
+              <table class="table-tech">
+                <thead>
+                  <tr>
+                    <th>Mức độ hiếm</th>
+                    <th>Tỷ lệ mặc định</th>
+                    <th>Bảo hiểm mềm (Soft Pity)</th>
+                    <th>Bảo hiểm cứng (Hard Pity)</th>
+                    <th>Quy tắc Tăng / Reset bộ đếm</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>Common</code></td>
+                    <td><strong>80%</strong></td>
+                    <td>Tự động giảm tương ứng khi tỷ lệ các độ hiếm khác tăng lên.</td>
+                    <td>Không có bảo hiểm.</td>
+                    <td>Không reset bộ đếm.</td>
+                  </tr>
+                  <tr>
+                    <td><code>Rare</code></td>
+                    <td><strong>15%</strong></td>
+                    <td>Nếu trượt Rare liên tục <strong>&ge; 5 lần</strong>: Tăng xác suất lên <strong>35%</strong>.</td>
+                    <td>Trượt Rare liên tục <strong>8 lần</strong>: Lần quay thứ 9 trúng <strong>100% Rare</strong>.</td>
+                    <td>Nếu quay trúng Rare: Reset <code>RarePityCount = 0</code>. Tăng <code>LegendaryPityCount + 1</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><code>Legendary</code></td>
+                    <td><strong>5%</strong></td>
+                    <td>If trượt Legendary liên tục <strong>&ge; 10 lần</strong>: Tăng xác suất lên <strong>25%</strong>.</td>
+                    <td>Trượt Legendary liên tục <strong>15 lần</strong>: Lần quay thứ 16 trúng <strong>100% Legendary</strong>.</td>
+                    <td>Nếu quay trúng Legendary: Reset <code>LegendaryPityCount = 0</code>. Tăng <code>RarePityCount + 1</code>.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout warning">
+              <strong>Lưu ý thuật toán:</strong> Nếu trượt cả hai loại, cả <code>RarePityCount</code> và <code>LegendaryPityCount</code> cùng được cộng thêm 1 đơn vị. Khi trúng một trong hai, chỉ reset bộ đếm của loại trúng đó, bộ đếm của loại còn lại vẫn được bảo lưu và tiếp tục tích lũy (reset độc lập).
+            </div>
+
+            <div class="code-wrapper">
+              <div class="code-header">
+                <span>shared/GachaModule.luau</span>
+                <button class="btn-copy">Copy</button>
+              </div>
+              <pre class="code-block" style="margin: 0; border: none; border-radius: 0;">
+function GachaModule.RollPet(player)
+	local playerData = shared.DataManager.GetData(player)
+	if not playerData then return { Name = "Common1", Rarity = "Common" } end
+
+	local rareCount = playerData.RarePityCount or 0
+	local legCount = playerData.LegendaryPityCount or 0
+	local chosenRarity = "Common"
+
+	-- 1. ĐIỀU KIỆN BẢO HIỂM CỨNG (HARD PITY) - NGẮT MẠCH SỚM
+	if legCount &gt;= 15 then
+		chosenRarity = "Legendary"
+	elseif rareCount &gt;= 8 then
+		chosenRarity = "Rare"
+	else
+		-- 2. ĐIỀU KIỆN BẢO HIỂM MỀM ĐỘNG (SOFT PITY)
+		local commonWeight = 80
+		local rareWeight = 15
+		local legWeight = 5
+
+		if legCount &gt;= 10 then
+			legWeight = 25
+			commonWeight = commonWeight - 20
+		end
+		if rareCount &gt;= 5 then
+			rareWeight = 35
+			commonWeight = commonWeight - 20
+		end
+
+		local roll = math.random(1, 100)
+		if roll &lt;= legWeight then
+			chosenRarity = "Legendary"
+		elseif roll &lt;= (legWeight + rareWeight) then
+			chosenRarity = "Rare"
+		else
+			chosenRarity = "Common"
+		end
+	end
+
+	-- 3. QUY TẮC RESET ĐỘC LẬP & TĂNG BỘ ĐẾM KHI HỤT
+	if chosenRarity == "Legendary" then
+		shared.DataManager.ResetPity(player, "Legendary")
+		shared.DataManager.IncrementPity(player, "Rare")
+	elseif chosenRarity == "Rare" then
+		shared.DataManager.ResetPity(player, "Rare")
+		shared.DataManager.IncrementPity(player, "Legendary")
+	else
+		shared.DataManager.IncrementPity(player, "Rare")
+		shared.DataManager.IncrementPity(player, "Legendary")
+	end
+
+	local pool = PET_POOL[chosenRarity]
+	return { Name = pool[math.random(1, #pool)], Rarity = chosenRarity }
+end</pre>
+            </div>
+          </section>
+
+          <!-- Section 6: Kỹ thuật & Vật lý -->
+          <section class="section" id="physics-techniques" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#physics-techniques" class="anchor-link">#</a>
+              6. Kỹ thuật di chuyển vật lý & Hiệu ứng Aura bọc chân
+            </h2>
+            <p>
+              Hệ thống bám đuôi nhân vật sử dụng kết hợp các cơ chế vật lý tiên tiến của Roblox Engine nhằm triệt tiêu hoàn toàn rung giật và giảm tải tối đa hiệu năng mạng:
+            </p>
+
+            <div class="grid-2">
+              <div class="card">
+                <p class="kicker">Vật lý C++ Constraints</p>
+                <p>
+                  Thay vì dùng vòng lặp định vị tọa độ liên tục ở Client (gây lag khung hình), Pet bám đuôi bằng <code>AlignPosition</code> và <code>AlignOrientation</code>. Roblox Engine sẽ tự động tính toán nội suy gia tốc kéo mượt mà ở tầng C++ hệ thống.
+                </p>
+              </div>
+              <div class="card">
+                <p class="kicker">Ủy quyền mạng (Network Ownership)</p>
+                <p>
+                  Server thiết lập <code>petRoot:SetNetworkOwner(player)</code> để bàn giao toàn quyền tính toán vật lý di chuyển của Pet cho Client sở hữu. Triệt tiêu độ trễ truyền gói tin, giúp Pet di chuyển tức thì theo nhân vật.
+                </p>
+              </div>
+            </div>
+
+            <div class="callout success" style="margin-top: var(--space-3);">
+              <strong>Bệ Hào Quang Xoay Ổn Định:</strong> Bệ Aura ma thuật nằm dưới chân Pet được hàn nối bằng <code>Weld</code>. Trên Server, một luồng quay matrix C0 của Weld chạy tại sự kiện <code>RunService.Heartbeat</code> với vận tốc 60 độ/giây, đảm bảo bệ hào quang luôn xoay tròn đồng đều trên mọi máy người chơi mà không làm ảnh hưởng đến góc đứng của Pet.
+            </div>
+
+            <div class="callout warning">
+              <strong>Triệt tiêu khối lượng (Massless):</strong> Mọi chi tiết trang trí của Pet, bệ Aura và ParticleEmitter đều được cấu hình <code>Massless = true</code> và <code>CanCollide = false</code>. Điều này giúp ngăn chặn hoàn toàn lực ma sát vật lý đẩy giật nhân vật chính khi Pet va quệt vào địa hình xung quanh.
+            </div>
+          </section>
+
+          <!-- Section 7: Quy tắc Bảo mật -->
+          <section class="section" id="security-rules" style="padding: var(--space-4) 0; border-bottom: 0;">
+            <h2 class="section-title anchor-header">
+              <a href="#security-rules" class="anchor-link">#</a>
+              7. Quy tắc bảo mật & Tối ưu hóa dữ liệu lớn
+            </h2>
+            <p>
+              Dự án áp dụng các cơ chế bảo mật tiêu chuẩn thương mại nhằm triệt tiêu các hành vi hack, cheat dữ liệu của hacker:
+            </p>
+
+            <div class="grid-2">
+              <div class="card">
+                <p class="kicker">Chống Spam mạng (Debounce Filter)</p>
+                <p>
+                  Server lưu trữ danh sách thời gian giao dịch của người chơi qua Dictionary <code>lastPurchaseTime[userId]</code>. Áp dụng cooldown cứng <strong>0.8 giây</strong> cho mỗi lượt mua trứng. Mọi cuộc gọi liên tiếp từ phần mềm ngoài sẽ bị loại bỏ ngay lập tức.
+                </p>
+              </div>
+              <div class="card">
+                <p class="kicker">Autosave rải rác chống nghẽn mạng</p>
+                <p>
+                  Để tránh lỗi chạm ngưỡng giới hạn ghi của Roblox DataStore Cloud (DataStore Rate Limit), Server lưu rải rác (staggered) bằng cách trì hoãn <strong>2 giây</strong> giữa mỗi người chơi trong vòng lặp lưu dữ liệu tự động.
+                </p>
+              </div>
+            </div>
+
+            <div class="callout danger" style="margin-top: var(--space-3);">
+              <strong>Xử lý lỗi DataStore Offline:</strong> Để tránh việc máy chủ Roblox Cloud DataStore gặp sự cố làm sập toàn bộ game, khối lệnh khởi tạo dữ liệu trong <code>DataManager.server.luau</code> được bọc trong <code>pcall</code>. Nếu không kết nối được Cloud, game tự động chuyển sang chế độ <strong>RAM Cache Offline</strong>, cho phép người chơi tiếp tục chơi bình thường mà không bị văng game.
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </main>
+
+    <!-- Thư viện Mermaid vẽ sơ đồ trực tiếp -->
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"Be Vietnam Pro", "Segoe UI", sans-serif',
+          fontSize: '13px',
+          primaryColor: '#fffaf2',
+          primaryBorderColor: '#e5d9c8',
+          primaryTextColor: '#1b2430',
+          lineColor: '#0f6b63',
+          arrowheadColor: '#0f6b63',
+          background: '#ffffff',
+          clusterBkg: '#fbf8f3',
+          clusterBorder: '#e5d9c8',
+          actorBkg: '#fffaf2',
+          actorBorder: '#e5d9c8',
+          actorTextColor: '#1b2430',
+          signalColor: '#0f6b63',
+          signalTextColor: '#4b5563',
+          labelBoxBkgColor: '#fbf8f3',
+          labelBoxBorderColor: '#e5d9c8',
+          loopBkgColor: '#faf6ee'
+        },
+        flowchart: { 
+          useMaxWidth: false,
+          htmlLabels: true
+        },
+        sequence: { 
+          useMaxWidth: false,
+          showSequenceNumbers: true 
+        }
+      });
+    </script>
+
+    <!-- Script Copy Code Blocks -->
+    <script>
+      document.querySelectorAll('.btn-copy').forEach(button => {
+        button.addEventListener('click', () => {
+          const wrapper = button.closest('.code-wrapper');
+          if (!wrapper) return;
+          const codeBlock = wrapper.querySelector('.code-block');
+          if (!codeBlock) return;
+          const codeText = codeBlock.textContent || codeBlock.innerText;
+          
+          // Sử dụng cơ chế sao chép tương thích
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(codeText).then(() => {
+              showSuccess(button);
+            });
+          } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = codeText;
+            textarea.style.position = 'fixed';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+              document.execCommand('copy');
+              showSuccess(button);
+            } catch (err) {
+              console.error('Lỗi khi sao chép: ', err);
+            }
+            document.body.removeChild(textarea);
+          }
+        });
+      });
+
+      function showSuccess(button) {
+        const originalText = button.textContent;
+        button.textContent = 'Copied! ✓';
+        button.style.background = 'var(--accent-2)';
+        button.style.borderColor = 'var(--accent-2)';
+        button.style.color = '#ffffff';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = '';
+          button.style.borderColor = '';
+          button.style.color = '';
+        }, 2000);
+      }
+    </script>
+
+    <!-- ScrollSpy Script -->
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        const observerOptions = {
+          root: null,
+          rootMargin: '-15% 0px -75% 0px',
+          threshold: 0
+        };
+
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const id = entry.target.getAttribute('id');
+              const navLink = document.querySelector(`#sidebar-nav a[href="#${id}"]`);
+              if (!navLink) return;
+
+              document.querySelectorAll('#sidebar-nav a').forEach(link => {
+                link.classList.remove('active');
+              });
+              navLink.classList.add('active');
+            }
+          });
+        }, observerOptions);
+
+        document.querySelectorAll('.content-area .section').forEach(section => {
+          observer.observe(section);
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -9,6 +9,7 @@
 local GachaModule = {}
 
 -- Bảng mapping danh sách tên Pet tương ứng trong Assets để sinh ngẫu nhiên
+-- dùng cho hàm rollPet phía dưới
 local PET_POOL = {
 	Common = {"Common1", "Common2", "Common3", "Common4", "Common5"},
 	Rare = {"Rare1", "Rare2", "Rare3"},
@@ -16,6 +17,7 @@ local PET_POOL = {
 }
 
 -- Cấu hình pool Pet gốc để tương thích ngược nếu cần
+-- chứa đầy đủ infor của pet để hiển thị ở UI shop
 GachaModule.PET_POOL = {
 	{ Name = "Common1", Rarity = "Common", Weight = 16 },
 	{ Name = "Common2", Rarity = "Common", Weight = 16 },
@@ -90,9 +92,9 @@ function GachaModule.RollPet(player)
 
 	-- Lấy ngẫu nhiên một con pet thuộc nhóm độ hiếm đã chọn
 	local pool = PET_POOL[chosenRarity]
-	local selectedPetName = pool[math.random(1, #pool)]
+	local selectedPetName = pool[math.random(1, #pool)] -- math.random(1, #pool) --> math.random(1,5) --> ngẫu nhiên (1,2,3,4,5) --> local selectedPetName = pool[3] --> VD: ra Common 3 --> selectedPetName = Common3
 
-	return { Name = selectedPetName, Rarity = chosenRarity }
+	return { Name = selectedPetName, Rarity = chosenRarity } -- Name = Common3, Rarity = Common
 end
 
 --[[

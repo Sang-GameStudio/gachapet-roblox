@@ -1,0 +1,1058 @@
+<!--
+  ========================================
+  AI-READABLE DESIGN SYSTEM SPEC
+  Version: 1.5 | Lang: vi
+  Đọc <template id="ai-ruleset"> để biết
+  quy tắc tạo HTML từ design system này.
+  ========================================
+-->
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hệ thống Thiết kế Đặc tả - Dự án của bạn</title>
+    <meta name="ai-context" content="design-system" />
+    <meta name="ai-version" content="1.5" />
+    <meta name="ai-usage" content="Đây là design system để tạo technical documentation. Luôn đọc #ai-ruleset trước khi tạo HTML." />
+    <link rel="stylesheet" href="styles.css?v=1.5" />
+  </head>
+  <body>
+    <!-- Đặt ngay sau <body> -->
+    <template id="ai-ruleset">
+      ## AI RULESET v1.6 — ĐỌC TRƯỚC KHI TẠO HTML
+
+      ### NGUYÊN TẮC BẮT BUỘC
+      - Chỉ dùng class có trong #component-reference bên dưới
+      - Không thêm style="" inline bất kỳ chỗ nào
+      - Không tự tạo class mới
+      - Chỉ trả về HTML fragment, không bao &lt;html&gt;&lt;head&gt;&lt;body&gt;
+
+      ### CẤU TRÚC BẮT BUỘC KHI MÔ TẢ 1 CHỨC NĂNG
+      Theo đúng thứ tự sau:
+      1. .badge (HTTP method) + .status-label + .kicker (tên chức năng)
+      2. Mô tả ngắn 2-3 câu trong &lt;p&gt;
+      3. &lt;pre class="mermaid"&gt; sequenceDiagram hoặc flowchart
+      4. .table-tech cho bảng tham số I/O
+      5. .callout.warning cho edge cases / giới hạn
+      6. .code-wrapper cho ví dụ request/response
+
+      ### COMPONENT REFERENCE
+      LAYOUT:   .container | .section | .section.alt | .grid-2 | .grid-3
+      CARD:     .card | .kicker
+      CALLOUT:  .callout.info | .callout.success | .callout.warning | .callout.danger
+      BADGE:    .badge.get | .badge.post | .badge.put | .badge.delete | .badge.patch
+      STATUS:   .status-label.stable | .status-label.draft | .status-label.deprecated
+      TABLE:    .table-tech
+      CODE:     .code-wrapper &gt; .code-header + .pre.code-block + .btn-copy
+      DIAGRAM:  .diagram-wrapper &gt; pre.mermaid + .diagram-caption
+      TOC:      .toc-container &gt; .toc-title + .toc-list &gt; .toc-link
+
+      ### DIAGRAM RULES
+      - Authentication flow → sequenceDiagram
+      - Trạng thái / điều kiện → flowchart TD
+      - Kiến trúc module → graph TD
+      - Luồng người dùng → flowchart LR
+
+      ### LƯU Ý PHÁT TRIỂN HỆ THỐNG (MỚI)
+      - **Tránh đè Sticky Layout**: Nếu kích hoạt Sticky Header, bắt buộc đặt `top` của `.sidebar` tối thiểu `80px` để tránh đè chữ.
+      - **Cơ chế Copy tương thích**: Phải có fallback sử dụng `textarea` phòng khi sao chép mã ở giao thức không bảo mật (`file://` hoặc IP local) làm `navigator.clipboard` bị `undefined`.
+      - **Mã hóa ký tự đặc biệt**: Trong code blocks, bắt buộc thay thế `&lt;` thành `&amp;lt;` và `&gt;` thành `&amp;gt;` để trình duyệt không biên dịch thành thẻ HTML. Nhãn sơ đồ Mermaid chứa ký tự đặc biệt hoặc dấu gạch chéo `/` phải đặt trong dấu nháy kép `""`.
+      - **Tránh dùng mũi tên ngược trong Mermaid**: Không dùng `<-` hoặc `<--` trong flowchart vì gây lỗi cú pháp (Syntax Error). Để vẽ mũi tên ngược, hãy đảo vị trí khai báo nút nguồn và đích, rồi dùng mũi tên xuôi `-->` chuẩn.
+    </template>
+
+    <header class="hero">
+      <div class="container hero-inner">
+        <p class="eyebrow">Hệ thống Thiết kế Đặc tả Hệ thống</p>
+        <h1>System Spec UI System</h1>
+        <p class="lead">
+          Bộ token, thành phần giao diện và sơ đồ mẫu được chuẩn hóa, giúp xây dựng tài liệu đặc tả kỹ thuật, thiết kế kiến trúc và mô tả API nhất quán cho hệ thống của bạn.
+        </p>
+        <div class="chip-row">
+          <span class="chip">Typography</span>
+          <span class="chip">Color Tokens</span>
+          <span class="chip">Layout</span>
+          <span class="chip">Components</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container main-layout">
+        <!-- Sticky Sidebar Navigation -->
+        <aside class="sidebar">
+          <nav class="sticky-nav" id="sidebar-nav">
+            <p class="sidebar-title">Mục lục</p>
+            <ul>
+              <li><a href="#tokens" class="active">Tokens & Spacing</a></li>
+              <li><a href="#layout">Layout & Bố cục</a></li>
+              <li><a href="#components">Thành phần cơ bản</a></li>
+              <li><a href="#system-spec-components">Thành phần đặc tả</a></li>
+              <li><a href="#spec-rules">Quy tắc Đặc tả & AI Ruleset</a></li>
+              <li><a href="#quick-start">Hướng dẫn nhanh</a></li>
+            </ul>
+          </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="content-area">
+          
+          <!-- Tokens Section -->
+          <section class="section" id="tokens" style="padding: 0 0 var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#tokens" class="anchor-link">#</a>
+              Tokens
+            </h2>
+            <div class="grid-2">
+              <div class="card">
+                <p class="kicker">Màu sắc</p>
+                <div class="swatch-grid">
+                  <div class="swatch" style="--swatch: var(--accent)">
+                    <span>Accent</span>
+                  </div>
+                  <div class="swatch" style="--swatch: var(--accent-2)">
+                    <span>Accent 2</span>
+                  </div>
+                  <div class="swatch" style="--swatch: var(--accent-3)">
+                    <span>Accent 3</span>
+                  </div>
+                  <div class="swatch" style="--swatch: var(--surface)">
+                    <span>Surface</span>
+                  </div>
+                  <div class="swatch" style="--swatch: var(--ink)">
+                    <span>Ink</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <p class="kicker">Typography</p>
+                <div class="type-sample">
+                  <h3>Tiêu đề Lora</h3>
+                  <p>
+                    Văn bản nội dung sử dụng Be Vietnam Pro để đảm bảo đọc tốt tiếng Việt.
+                  </p>
+                  <p class="muted">Muted text cho ghi chú hoặc meta.</p>
+                </div>
+              </div>
+              
+              <!-- Spacing Token Visualization -->
+              <div class="card" style="grid-column: span 2;">
+                <p class="kicker">Khoảng cách (Spacing Tokens)</p>
+                <div class="spacing-grid">
+                  <div class="spacing-item">
+                    <span class="spacing-label">--space-1 (6px)</span>
+                    <div class="spacing-bar-container">
+                      <div class="spacing-bar" style="width: 6px;"></div>
+                    </div>
+                  </div>
+                  <div class="spacing-item">
+                    <span class="spacing-label">--space-2 (10px)</span>
+                    <div class="spacing-bar-container">
+                      <div class="spacing-bar" style="width: 10px;"></div>
+                    </div>
+                  </div>
+                  <div class="spacing-item">
+                    <span class="spacing-label">--space-3 (16px)</span>
+                    <div class="spacing-bar-container">
+                      <div class="spacing-bar" style="width: 16px;"></div>
+                    </div>
+                  </div>
+                  <div class="spacing-item">
+                    <span class="spacing-label">--space-4 (24px)</span>
+                    <div class="spacing-bar-container">
+                      <div class="spacing-bar" style="width: 24px;"></div>
+                    </div>
+                  </div>
+                  <div class="spacing-item">
+                    <span class="spacing-label">--space-5 (32px)</span>
+                    <div class="spacing-bar-container">
+                      <div class="spacing-bar" style="width: 32px;"></div>
+                    </div>
+                  </div>
+                  <div class="spacing-item">
+                    <span class="spacing-label">--space-6 (48px)</span>
+                    <div class="spacing-bar-container">
+                      <div class="spacing-bar" style="width: 48px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Layout Section -->
+          <section class="section" id="layout" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#layout" class="anchor-link">#</a>
+              Layout & Bố cục
+            </h2>
+            <div class="grid-3">
+              <div class="card">
+                <p class="kicker">Container</p>
+                <p>Chiều rộng tối đa 1200px, căn giữa và khoảng cách hợp lý.</p>
+              </div>
+              <div class="card">
+                <p class="kicker">Grid</p>
+                <p>Sử dụng .grid-2 hoặc .grid-3 để chia cột.</p>
+              </div>
+              <div class="card">
+                <p class="kicker">Section</p>
+                <p>.section và .section.alt tạo khối rõ ràng và dễ đọc.</p>
+              </div>
+              <!-- Real Section Alt Example -->
+              <div class="card" style="grid-column: span 3;">
+                <p class="kicker">Mẫu phân chia Bố cục (.section.alt)</p>
+                <p style="margin-bottom: var(--space-3);">
+                  Dưới đây là một phần tử giả lập hiển thị phong cách <code>.section.alt</code> với màu nền xám/kem nhẹ để tạo sự tách biệt giữa các phần thông tin:
+                </p>
+                <div class="section alt" style="border-radius: var(--radius-sm); padding: var(--space-4); border: 1px solid var(--line); margin: 0;">
+                  <h4 style="font-family: 'Lora', serif; margin-bottom: var(--space-2); font-size: 1.1rem;">Khối nội dung phụ (Alt Section Container)</h4>
+                  <p class="muted" style="margin-bottom: 0; font-size: 0.92rem;">
+                    Bằng cách áp dụng màu nền khác biệt nhẹ, người đọc tài liệu kỹ thuật có thể dễ dàng nhận thấy sự chuyển đổi ngữ cảnh hoặc phân vùng chức năng mà không cần dùng đến các đường chia kẻ cứng nhắc.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Components Section -->
+          <section class="section" id="components" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#components" class="anchor-link">#</a>
+              Components
+            </h2>
+            <div class="grid-2">
+              <!-- Buttons Card with Interactive States -->
+              <div class="card">
+                <p class="kicker">Buttons & Trạng thái</p>
+                <div class="stack" style="margin-bottom: var(--space-3);">
+                  <button class="btn primary">Primary</button>
+                  <button class="btn outline">Outline</button>
+                  <button class="btn ghost">Ghost</button>
+                </div>
+                <div class="btn-state-grid">
+                  <div>
+                    <button class="btn primary" style="width: 100%; transform: translateY(-2px); box-shadow: 0 12px 24px rgba(208, 74, 30, 0.25);">Hover</button>
+                    <div class="state-label">Hover State</div>
+                  </div>
+                  <div>
+                    <button class="btn primary" style="width: 100%; box-shadow: 0 0 0 3px rgba(208, 74, 30, 0.45); outline: none;">Focus</button>
+                    <div class="state-label">Focus State</div>
+                  </div>
+                  <div>
+                    <button class="btn primary" disabled style="width: 100%;">Disabled</button>
+                    <div class="state-label">Disabled State</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Form Elements Card -->
+              <div class="card">
+                <p class="kicker">Form Elements (Trường nhập liệu)</p>
+                <div class="form-group">
+                  <label class="form-label">Họ và tên <span class="required-star">*</span></label>
+                  <input type="text" class="form-control" placeholder="Nhập họ và tên...">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Vai trò hệ thống</label>
+                  <select class="form-control">
+                    <option>Administrator</option>
+                    <option>Developer</option>
+                    <option>Guest Reader</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Mô tả đặc tả</label>
+                  <textarea class="form-control" rows="2" placeholder="Mô tả chức năng..." style="resize: vertical; min-height: 60px;"></textarea>
+                </div>
+                <div style="display: flex; gap: var(--space-4); margin-top: var(--space-3);">
+                  <label class="form-check">
+                    <input type="checkbox" class="form-check-input" checked>
+                    <span>Bắt buộc kích hoạt</span>
+                  </label>
+                  <label class="form-check">
+                    <input type="radio" name="status" class="form-check-input" checked>
+                    <span>Hoạt động</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="card">
+                <p class="kicker">Chips</p>
+                <div class="chip-row">
+                  <span class="chip">Feature</span>
+                  <span class="chip">Bugfix</span>
+                  <span class="chip">Deploy</span>
+                </div>
+              </div>
+              <div class="card">
+                <p class="kicker">Card + Tag</p>
+                <p>Card là khối nội dung chính. Tag dùng cho ghi chú.</p>
+                <div class="tag">Lưu ý: token màu sắc có thể thay đổi.</div>
+              </div>
+              <div class="card">
+                <p class="kicker">Table</p>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th>Port</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Gateway</td><td>8080</td></tr>
+                    <tr><td>Order</td><td>8084</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card">
+                <p class="kicker">Code block</p>
+                <div class="code-wrapper" style="margin-bottom: 0;">
+                  <div class="code-header">
+                    <span>Terminal / Bash</span>
+                    <button class="btn-copy">Copy</button>
+                  </div>
+                  <pre class="code-block">curl http://localhost:8080/api/books</pre>
+                </div>
+              </div>
+              <div class="card" style="grid-column: span 2;">
+                <p class="kicker">Callout</p>
+                <div class="callout" style="margin-bottom: 0;">
+                  Nội dung thông báo ngắn gọn, nhấn mạnh ý quan trọng.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- System Specification Components Section -->
+          <section class="section" id="system-spec-components" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#system-spec-components" class="anchor-link">#</a>
+              System Specification Components
+            </h2>
+            <p class="lead" style="margin-bottom: var(--space-4);">
+              Các thành phần chuyên dụng để viết tài liệu đặc tả hệ thống (Software Specification, API Specs, Database schema, Diagrams).
+            </p>
+
+            <div class="grid-2">
+              <!-- Table of Contents -->
+              <div class="card">
+                <p class="kicker">Mục lục tài liệu (TOC)</p>
+                <div class="toc-container" style="margin-bottom: 0;">
+                  <h3 class="toc-title">Mục lục đặc tả API</h3>
+                  <ul class="toc-list">
+                    <li><a href="#" class="toc-link">1. Tổng quan hệ thống</a></li>
+                    <li><a href="#" class="toc-link">2. Luồng đăng nhập OAuth2</a></li>
+                    <li><a href="#" class="toc-link">3. Đặc tả các Endpoint tin nhắn</a></li>
+                    <li><a href="#" class="toc-link">4. Thiết kế Database Schema</a></li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- HTTP Badges & Status Labels -->
+              <div class="card">
+                <p class="kicker">HTTP Methods & Status Labels</p>
+                <div class="stack" style="margin-bottom: var(--space-3);">
+                  <span class="badge get">GET</span>
+                  <span class="badge post">POST</span>
+                  <span class="badge put">PUT</span>
+                  <span class="badge patch">PATCH</span>
+                  <span class="badge delete">DELETE</span>
+                </div>
+                <div class="stack">
+                  <span class="status-label stable">Stable</span>
+                  <span class="status-label review">In Review</span>
+                  <span class="status-label draft">Draft</span>
+                  <span class="status-label deprecated">Deprecated</span>
+                </div>
+              </div>
+
+              <!-- Multi-level Callouts -->
+              <div class="card" style="grid-column: span 2;">
+                <p class="kicker">Hộp thông tin phân cấp (Callouts)</p>
+                <div class="grid-2">
+                  <div>
+                    <div class="callout info" style="margin-bottom: var(--space-2);">
+                      <strong>Thông tin (Info):</strong> Cổng kết nối Gateway chạy mặc định ở port 8080.
+                    </div>
+                    <div class="callout success">
+                      <strong>Thành công (Success):</strong> API trả về mã 200 OK khi cập nhật hồ sơ thành công.
+                    </div>
+                  </div>
+                  <div>
+                    <div class="callout warning" style="margin-bottom: var(--space-2);">
+                      <strong>Cảnh báo (Warning):</strong> Token truy cập (Access Token) sẽ hết hạn sau 15 phút.
+                    </div>
+                    <div class="callout danger">
+                      <strong>Nguy hiểm (Danger):</strong> Xóa nhóm chat sẽ xóa toàn bộ dữ liệu tin nhắn vĩnh viễn.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Technical Specification Table -->
+              <div class="card" style="grid-column: span 2;">
+                <p class="kicker">Bảng tham số kỹ thuật / DB Schema</p>
+                <div class="table-responsive" style="margin-bottom: 0;">
+                  <table class="table-tech">
+                    <thead>
+                      <tr>
+                        <th>Trường (Field)</th>
+                        <th>Kiểu dữ liệu (Type)</th>
+                        <th>Bắt buộc (Required)</th>
+                        <th>Mô tả (Description)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code>userId</code></td>
+                        <td>String (UUID)</td>
+                        <td>Có<span class="required-star">*</span></td>
+                        <td>ID của người dùng cần truy vấn thông tin.</td>
+                      </tr>
+                      <tr>
+                        <td><code>status</code></td>
+                        <td>String (Enum)</td>
+                        <td>Không</td>
+                        <td>Trạng thái tài khoản (<code>ACTIVE</code>, <code>PENDING</code>).</td>
+                      </tr>
+                      <tr>
+                        <td><code>createdAt</code></td>
+                        <td>Timestamp</td>
+                        <td>Không</td>
+                        <td>Thời gian khởi tạo bản ghi dữ liệu.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Advanced Code Block -->
+              <div class="card">
+                <p class="kicker">Khối mã nâng cao (Advanced Code Block)</p>
+                <div class="code-wrapper" style="margin-bottom: 0;">
+                  <div class="code-header">
+                    <span>src/modules/auth/auth.dto.ts</span>
+                    <button class="btn-copy">Copy</button>
+                  </div>
+                  <pre class="code-block">export interface ILoginResponse {
+  accessToken: string;
+  expiresIn: number;
+  tokenType: "Bearer";
+}</pre>
+                </div>
+              </div>
+
+              <!-- Diagram Container -->
+              <div class="card">
+                <p class="kicker">Khung hiển thị Sơ đồ (Diagram Container)</p>
+                <div class="diagram-wrapper" style="margin-bottom: 0;">
+                  <div class="diagram-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                    </svg>
+                    <span style="font-weight: 600; font-size: 0.9rem; margin-top: var(--space-2);">Sequence / Flowchart Diagram</span>
+                  </div>
+                  <div class="diagram-caption">Hình 1.2: Luồng xác thực người dùng qua Gateway</div>
+                </div>
+              </div>
+
+              <!-- Diagram Container with Tab Switcher -->
+              <div class="card" style="grid-column: span 2;">
+                <p class="kicker">Mẫu sơ đồ thực tế (Mermaid.js Templates)</p>
+                
+                <div class="tabs" id="diagram-tabs" style="margin-bottom: var(--space-3);">
+                  <button class="tab-btn active" onclick="switchDiagramTab(event, 'diag-usecase')">Use Case Diagram</button>
+                  <button class="tab-btn" onclick="switchDiagramTab(event, 'diag-arch')">Architecture Diagram</button>
+                  <button class="tab-btn" onclick="switchDiagramTab(event, 'diag-deploy')">Deployment Diagram</button>
+                  <button class="tab-btn" onclick="switchDiagramTab(event, 'diag-seq')">Sequence Diagram</button>
+                  <button class="tab-btn" onclick="switchDiagramTab(event, 'diag-act')">Activity Diagram</button>
+                </div>
+
+                <!-- Use Case -->
+                <div id="diag-usecase" class="tab-content">
+                  <div class="diagram-wrapper" style="margin-bottom: var(--space-3);">
+                    <pre class="mermaid">
+                      graph TB
+                        classDef actor fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:10px,ry:10px;
+                        classDef uc fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:8px,ry:8px;
+
+                        subgraph Actors ["Tác nhân"]
+                          Guest((Guest/Khách)):::actor
+                          User((User/Thành viên)):::actor
+                          Admin((Admin/Quản trị viên)):::actor
+                        end
+                        
+                        subgraph System ["Hệ thống của bạn"]
+                          UC1[UC01: Đăng ký + Xác thực OTP]:::uc
+                          UC2[UC02: Đăng nhập khuôn mặt]:::uc
+                          UC3[UC03: Gửi tin nhắn Realtime]:::uc
+                          UC4[UC04: Đăng tải phương tiện]:::uc
+                          UC5[UC05: Báo cáo tài nguyên]:::uc
+                        end
+                        
+                        Guest --> UC1
+                        User --> UC2
+                        User --> UC3
+                        User --> UC4
+                        Admin --> UC5
+                    </pre>
+                    <div class="diagram-caption">Hình 2.1: Sơ đồ Use Case tổng quát của hệ thống</div>
+                  </div>
+                  <div class="code-wrapper" style="margin-bottom: 0;">
+                    <div class="code-header">
+                      <span>Mã nguồn Mermaid: Use Case Diagram</span>
+                      <button class="btn-copy">Copy Code</button>
+                    </div>
+                    <pre class="code-block">graph TB
+  classDef actor fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:10px,ry:10px;
+  classDef uc fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:8px,ry:8px;
+
+  subgraph Actors ["Tác nhân"]
+    Guest((Guest/Khách)):::actor
+    User((User/Thành viên)):::actor
+    Admin((Admin/Quản trị viên)):::actor
+  end
+  
+  subgraph System ["Hệ thống của bạn"]
+    UC1[UC01: Đăng ký + Xác thực OTP]:::uc
+    UC2[UC02: Đăng nhập khuôn mặt]:::uc
+    UC3[UC03: Gửi tin nhắn Realtime]:::uc
+    UC4[UC04: Đăng tải phương tiện]:::uc
+    UC5[UC05: Báo cáo tài nguyên]:::uc
+  end
+  
+  Guest --> UC1
+  User --> UC2
+  User --> UC3
+  User --> UC4
+  Admin --> UC5</pre>
+                  </div>
+                </div>
+
+                <!-- Architecture -->
+                <div id="diag-arch" class="tab-content hidden-tab">
+                  <div class="diagram-wrapper" style="margin-bottom: var(--space-3);">
+                    <pre class="mermaid">
+                      graph TD
+                        classDef client fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef gateway fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef service fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef database fill:#fafaf9,stroke:#78716c,stroke-width:1.5px,rx:6px,ry:6px;
+
+                        subgraph Clients [Tầng Client / Presentation]
+                          Web[React Single Page Application]:::client
+                          Mobile[React Native Expo Mobile App]:::client
+                        end
+
+                        subgraph GatewayLayer [Tầng Gateway & Routing]
+                          CloudFront[Amazon CloudFront]:::gateway
+                          APIGW[API Gateway / Load Balancer]:::gateway
+                        end
+
+                        subgraph Services [Tầng Microservices / Logic]
+                          AuthService[Authentication Service]:::service
+                          ChatService[Chat Service]:::service
+                          MediaService[Media Service]:::service
+                        end
+
+                        subgraph Storage [Tầng Database & Cache]
+                          DDB[(Database Tables)]:::database
+                          Redis[(Cache Server)]:::database
+                          S3[(File Storage)]:::database
+                        end
+
+                        Web & Mobile --> CloudFront
+                        CloudFront --> APIGW
+                        APIGW --> AuthService & ChatService & MediaService
+                        AuthService --> Redis
+                        ChatService --> DDB
+                        MediaService --> S3 & DDB
+                    </pre>
+                    <div class="diagram-caption">Hình 2.2: Kiến trúc 3 tầng tổng thể của hệ thống</div>
+                  </div>
+                  <div class="code-wrapper" style="margin-bottom: 0;">
+                    <div class="code-header">
+                      <span>Mã nguồn Mermaid: Architecture Diagram</span>
+                      <button class="btn-copy">Copy Code</button>
+                    </div>
+                    <pre class="code-block">graph TD
+  classDef client fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef gateway fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef service fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef database fill:#fafaf9,stroke:#78716c,stroke-width:1.5px,rx:6px,ry:6px;
+
+  subgraph Clients [Tầng Client / Presentation]
+    Web[React Single Page Application]:::client
+    Mobile[React Native Expo Mobile App]:::client
+  end
+
+  subgraph GatewayLayer [Tầng Gateway & Routing]
+    CloudFront[Amazon CloudFront]:::gateway
+    APIGW[API Gateway / Load Balancer]:::gateway
+  end
+
+  subgraph Services [Tầng Microservices / Logic]
+    AuthService[Authentication Service]:::service
+    ChatService[Chat Service]:::service
+    MediaService[Media Service]:::service
+  end
+
+  subgraph Storage [Tầng Database & Cache]
+    DDB[(Database Tables)]:::database
+    Redis[(Cache Server)]:::database
+    S3[(File Storage)]:::database
+  end
+
+  Web & Mobile --> CloudFront
+  CloudFront --> APIGW
+  APIGW --> AuthService & ChatService & MediaService
+  AuthService --> Redis
+  ChatService --> DDB
+  MediaService --> S3 & DDB</pre>
+                  </div>
+                </div>
+
+                <!-- Deployment -->
+                <div id="diag-deploy" class="tab-content hidden-tab">
+                  <div class="diagram-wrapper" style="margin-bottom: var(--space-3);">
+                    <pre class="mermaid">
+                      graph LR
+                        classDef client fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef gateway fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef service fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef database fill:#fafaf9,stroke:#78716c,stroke-width:1.5px,rx:6px,ry:6px;
+
+                        subgraph AWS_Cloud [AWS Cloud Infrastructure]
+                          subgraph VPC [VPC 10.0.0.0/16]
+                            subgraph Public_Subnet [Public Subnet - Internet Facing]
+                              ALB[Application Load Balancer]:::gateway
+                            end
+                            subgraph Private_Subnet [Private Subnet - App & DB]
+                              EC2[EC2 Container Instance - App Server]:::service
+                              Cache[(Redis Cache Server)]:::database
+                            end
+                          end
+                          S3[(Amazon S3 Media Storage)]:::database
+                          DDB[(DynamoDB Service)]:::database
+                        end
+                        
+                        UserApp[User Browser / App Client]:::client -->|HTTPS Requests| ALB
+                        ALB -->|Forward to port 8080| EC2
+                        EC2 -->|Query/Write session| Cache
+                        EC2 -->|Persist Metadata| DDB
+                        EC2 -->|Upload original media| S3
+                    </pre>
+                    <div class="diagram-caption">Hình 2.3: Sơ đồ triển khai vật lý (Deployment Diagram) trên AWS Cloud</div>
+                  </div>
+                  <div class="code-wrapper" style="margin-bottom: 0;">
+                    <div class="code-header">
+                      <span>Mã nguồn Mermaid: Deployment Diagram</span>
+                      <button class="btn-copy">Copy Code</button>
+                    </div>
+                    <pre class="code-block">graph LR
+  classDef client fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef gateway fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef service fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef database fill:#fafaf9,stroke:#78716c,stroke-width:1.5px,rx:6px,ry:6px;
+
+  subgraph AWS_Cloud [AWS Cloud Infrastructure]
+    subgraph VPC [VPC 10.0.0.0/16]
+      subgraph Public_Subnet [Public Subnet - Internet Facing]
+        ALB[Application Load Balancer]:::gateway
+      end
+      subgraph Private_Subnet [Private Subnet - App & DB]
+        EC2[EC2 Container Instance - App Server]:::service
+        Cache[(Redis Cache Server)]:::database
+      end
+    end
+    S3[(Amazon S3 Media Storage)]:::database
+    DDB[(DynamoDB Service)]:::database
+  end
+  
+  UserApp[User Browser / App Client]:::client -->|HTTPS Requests| ALB
+  ALB -->|Forward to port 8080| EC2
+  EC2 -->|Query/Write session| Cache
+  EC2 -->|Persist Metadata| DDB
+  EC2 -->|Upload original media| S3</pre>
+                  </div>
+                </div>
+
+                <!-- Sequence -->
+                <div id="diag-seq" class="tab-content hidden-tab">
+                  <div class="diagram-wrapper" style="margin-bottom: var(--space-3);">
+                    <pre class="mermaid">
+                      sequenceDiagram
+                        autonumber
+                        actor User as Client User
+                        participant APP as Mobile Client (React Native)
+                        participant GW as API Gateway (Port 8080)
+                        participant MSG as Chat Microservice
+                        participant DB as DynamoDB
+
+                        User->>APP: Nhấn gửi tin nhắn
+                        APP->>GW: Gửi yêu cầu WebSocket (send_message payload)
+                        GW->>MSG: Điều phối thông điệp tới xử lý chat
+                        MSG->>DB: Lưu trữ tin nhắn vào bảng Messages
+                        DB-->>MSG: Xác nhận đã lưu (OK)
+                        MSG-->>APP: Phản hồi WebSocket: Ack (msgId, status: SENT)
+                        APP-->>User: Hiển thị dấu tích đã gửi (v)
+                    </pre>
+                    <div class="diagram-caption">Hình 2.4: Trình tự gửi tin nhắn Realtime qua kết nối WebSocket</div>
+                  </div>
+                  <div class="code-wrapper" style="margin-bottom: 0;">
+                    <div class="code-header">
+                      <span>Mã nguồn Mermaid: Sequence Diagram</span>
+                      <button class="btn-copy">Copy Code</button>
+                    </div>
+                    <pre class="code-block">sequenceDiagram
+  autonumber
+  actor User as Client User
+  participant APP as Mobile Client (React Native)
+  participant GW as API Gateway (Port 8080)
+  participant MSG as Chat Microservice
+  participant DB as DynamoDB
+
+  User->>APP: Nhấn gửi tin nhắn
+  APP->>GW: Gửi yêu cầu WebSocket (send_message payload)
+  GW->>MSG: Điều phối thông điệp tới xử lý chat
+  MSG->>DB: Lưu trữ tin nhắn vào bảng Messages
+  DB-->>MSG: Xác nhận đã lưu (OK)
+  MSG-->>APP: Phản hồi WebSocket: Ack (msgId, status: SENT)
+  APP-->>User: Hiển thị dấu tích đã gửi (v)</pre>
+                  </div>
+                </div>
+
+                <!-- Activity -->
+                <div id="diag-act" class="tab-content hidden-tab">
+                  <div class="diagram-wrapper" style="margin-bottom: var(--space-3);">
+                    <pre class="mermaid">
+                      flowchart TD
+                        classDef endpoint fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:20px,ry:20px;
+                        classDef step fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:8px,ry:8px;
+                        classDef branch fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,rx:6px,ry:6px;
+
+                        Start([Bắt đầu]):::endpoint --> InputPhone[Nhập số điện thoại đăng nhập]:::step
+                        InputPhone --> ClickSend[Nhấn nhận mã OTP]:::step
+                        ClickSend --> SendSMS[Hệ thống gửi mã OTP qua SMS]:::step
+                        SendSMS --> InputOTP[Nhập mã OTP 6 chữ số]:::step
+                        InputOTP --> CheckOTP{Kiểm tra mã OTP?}:::branch
+                        CheckOTP -->|Khớp & Còn hạn| Success[Đăng nhập thành công]:::step
+                        CheckOTP -->|Sai / Hết hạn| ShowError[Hiển thị lỗi và yêu cầu thử lại]:::step
+                        ShowError --> InputOTP
+                        Success --> CreateSession[Tạo phiên và chuyển hướng vào trang chủ]:::step
+                        CreateSession --> End([Kết thúc]):::endpoint
+                    </pre>
+                    <div class="diagram-caption">Hình 2.5: Sơ đồ hoạt động đăng nhập thông qua mã xác thực OTP SMS</div>
+                  </div>
+                  <div class="code-wrapper" style="margin-bottom: 0;">
+                    <div class="code-header">
+                      <span>Mã nguồn Mermaid: Activity Diagram</span>
+                      <button class="btn-copy">Copy Code</button>
+                    </div>
+                    <pre class="code-block">flowchart TD
+  classDef endpoint fill:#ecfdf5,stroke:#10b981,stroke-width:1.5px,rx:20px,ry:20px;
+  classDef step fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,rx:8px,ry:8px;
+  classDef branch fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,rx:6px,ry:6px;
+
+  Start([Bắt đầu]):::endpoint --> InputPhone[Nhập số điện thoại đăng nhập]:::step
+  InputPhone --> ClickSend[Nhấn nhận mã OTP]:::step
+  ClickSend --> SendSMS[Hệ thống gửi mã OTP qua SMS]:::step
+  SendSMS --> InputOTP[Nhập mã OTP 6 chữ số]:::step
+  InputOTP --> CheckOTP{Kiểm tra mã OTP?}:::branch
+  CheckOTP -->|Khớp & Còn hạn| Success[Đăng nhập thành công]:::step
+  CheckOTP -->|Sai / Hết hạn| ShowError[Hiển thị lỗi và yêu cầu thử lại]:::step
+  ShowError --> InputOTP
+  Success --> CreateSession[Tạo phiên và chuyển hướng vào trang chủ]:::step
+  CreateSession --> End([Kết thúc]):::endpoint</pre>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Spec Rules & AI Ruleset Section -->
+          <section class="section" id="spec-rules" style="padding: var(--space-4) 0; border-bottom: 1px solid var(--line);">
+            <h2 class="section-title anchor-header">
+              <a href="#spec-rules" class="anchor-link">#</a>
+              Quy tắc Đặc tả & AI Ruleset
+            </h2>
+            <p class="lead" style="margin-bottom: var(--space-4);">
+              Quy chuẩn thiết kế đặc tả hệ thống và bộ quy tắc bắt buộc dành cho lập trình viên và các trình sinh mã tự động (AI Code Generators).
+            </p>
+
+            <div class="grid-2">
+              <!-- AI Ruleset Card -->
+              <div class="card" style="grid-column: span 2;">
+                <p class="kicker">Bộ Quy Tắc Đặc Tả Kỹ Thuật (AI Ruleset Documented)</p>
+                <div class="callout warning" style="margin-bottom: var(--space-3);">
+                  <strong>Nguyên tắc bắt buộc:</strong> Khi yêu cầu AI sinh mã HTML cho một trang đặc tả chức năng mới, luôn yêu cầu AI đọc và tuân thủ tuyệt đối các quy định dưới đây.
+                </div>
+                
+                <div class="grid-2" style="gap: var(--space-4);">
+                  <div>
+                    <h4 style="font-family: 'Lora', serif; margin-bottom: var(--space-2); font-size: 1.1rem; color: var(--accent-2);">1. Quy tắc Viết Mã</h4>
+                    <ul style="padding-left: var(--space-3); margin-bottom: var(--space-3); font-size: 0.92rem; display: grid; gap: var(--space-1); list-style-type: disc;">
+                      <li>Chỉ sử dụng các class CSS đã được định nghĩa sẵn trong design system này.</li>
+                      <li>Tuyệt đối <strong>không thêm thuộc tính style="" inline</strong> trong các thẻ HTML.</li>
+                      <li>Không tự ý tạo thêm class mới ngoài hệ thống thiết kế.</li>
+                      <li>Chỉ trả về đoạn mã <strong>HTML Fragment</strong> (khối nội dung), không bao gồm các thẻ <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;body&gt;</code> trừ khi được yêu cầu tạo tệp độc lập.</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 style="font-family: 'Lora', serif; margin-bottom: var(--space-2); font-size: 1.1rem; color: var(--accent-2);">2. Cấu trúc đặc tả Chức năng</h4>
+                    <p style="font-size: 0.92rem; margin-bottom: var(--space-2);">Mọi tài liệu mô tả API/Chức năng phải được trình bày theo đúng trình tự:</p>
+                    <ol style="padding-left: var(--space-3); font-size: 0.92rem; display: grid; gap: var(--space-1); list-style-type: decimal;">
+                      <li><strong>Thông tin chung:</strong> Badge (HTTP method) + Status Label + Kicker (Tên chức năng) đặt cùng hàng.</li>
+                      <li><strong>Mô tả nghiệp vụ:</strong> Tóm tắt nghiệp vụ trong 2-3 câu bằng thẻ <code>&lt;p&gt;</code>.</li>
+                      <li><strong>Sơ đồ luồng:</strong> Khung <code>.diagram-wrapper</code> chứa <code>&lt;pre class="mermaid"&gt;</code> và chú thích <code>.diagram-caption</code>.</li>
+                      <li><strong>Bảng tham số I/O:</strong> Bảng <code>.table-tech</code> liệt kê các tham số (Tham số bắt buộc có <code>&lt;span class="required-star"&gt;*&lt;/span&gt;</code>).</li>
+                      <li><strong>Ngoại lệ & Giới hạn:</strong> Sử dụng <code>.callout.warning</code> hoặc <code>.callout.danger</code>.</li>
+                      <li><strong>Ví dụ dữ liệu:</strong> Khối mã nguồn <code>.code-wrapper</code> chứa Request/Response JSON thực tế.</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Diagram Guidelines Card -->
+              <div class="card">
+                <p class="kicker">Quy tắc chọn Sơ đồ (Diagram Mapping Rules)</p>
+                <div class="table-responsive" style="margin-bottom: 0; box-shadow: none;">
+                  <table class="table-tech" style="font-size: 0.85rem;">
+                    <thead>
+                      <tr>
+                        <th>Dạng Sơ đồ</th>
+                        <th>Loại Mermaid</th>
+                        <th>Mục đích sử dụng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Use Case</strong></td>
+                        <td><code>graph TB</code> hoặc <code>graph LR</code></td>
+                        <td>Biểu diễn tác nhân và các chức năng hệ thống cung cấp.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Kiến trúc</strong></td>
+                        <td><code>graph TD</code></td>
+                        <td>Phân tầng kỹ thuật (Presentation, Gateway, Microservices, Storage).</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Triển khai</strong></td>
+                        <td><code>graph LR</code> hoặc <code>graph TD</code></td>
+                        <td>Mô tả hạ tầng vật lý, mạng, VPC và các tài nguyên Cloud.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Trình tự</strong></td>
+                        <td><code>sequenceDiagram</code></td>
+                        <td>Mô tả luồng giao tiếp thời gian thực, có số thứ tự tự động.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Hoạt động</strong></td>
+                        <td><code>flowchart TD</code> hoặc <code>flowchart LR</code></td>
+                        <td>Biểu diễn luồng logic nghiệp vụ, các bước rẽ nhánh điều kiện.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Mermaid Styling Rules Card -->
+              <div class="card">
+                <p class="kicker">Quy chuẩn Thiết kế Sơ đồ Mermaid</p>
+                <ul style="padding-left: var(--space-3); font-size: 0.92rem; display: grid; gap: var(--space-2); margin-bottom: var(--space-3); list-style-type: disc;">
+                  <li><strong>Tối giản giao cắt:</strong> Định hướng luồng rõ ràng (TD: Top-Down hoặc LR: Left-Right) để giảm thiểu đường chỉ chéo nhau gây rối mắt.</li>
+                  <li><strong>Nhãn rõ ràng:</strong> Luôn đặt tên rõ ràng cho tác nhân/thành phần, ví dụ sử dụng <code>actor User as Client User</code> hoặc <code>participant GW as API Gateway</code>.</li>
+                  <li><strong>Màu sắc tối giản:</strong> Không tự ý thay đổi màu lòe loẹt. Dùng config base-theme trùng với gam màu kem ấm của hệ thống.</li>
+                  <li><strong>Không tự co giãn méo mó:</strong> Cấu hình <code>useMaxWidth: false</code> để sơ đồ hiển thị kích thước gốc sắc nét và có thể cuộn ngang khi cần thiết trên di động.</li>
+                </ul>
+                <div class="callout info" style="margin-bottom: 0; font-size: 0.88rem; padding: var(--space-2) var(--space-3);">
+                  <strong>Tip:</strong> Định nghĩa class CSS trong Mermaid (<code>classDef</code>) để gom nhóm màu sắc Client/Service/DB.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Quick Start Section -->
+          <section class="section" id="quick-start" style="padding: var(--space-4) 0 0 0;">
+            <h2 class="section-title anchor-header">
+              <a href="#quick-start" class="anchor-link">#</a>
+              Hướng dẫn nhanh
+            </h2>
+            <div class="card">
+              <div class="code-wrapper" style="margin-bottom: 0;">
+                <div class="code-header">
+                  <span>Cách sử dụng</span>
+                  <button class="btn-copy">Copy</button>
+                </div>
+                <pre class="code-block">&lt;!-- Import CSS --&gt;
+&lt;link rel="stylesheet" href="design-system/styles.css" /&gt;
+
+&lt;!-- Alert phân cấp --&gt;
+&lt;div class="callout success"&gt;
+  &lt;strong&gt;Thành công:&lt;/strong&gt; Dữ liệu đã lưu.
+&lt;/div>
+
+&lt;!-- HTTP Badge --&gt;
+&lt;span class="badge get"&gt;GET&lt;/span&gt;
+
+&lt;!-- Code block nâng cao --&gt;
+&lt;div class="code-wrapper"&gt;
+  &lt;div class="code-header"&gt;
+    &lt;span&gt;file.js&lt;/span&gt;
+    &lt;button class="btn-copy"&gt;Copy&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;pre class="code-block"&gt;console.log("Hello");&lt;/pre&gt;
+&lt;/div&gt;</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-card">
+          <p>Design system này có thể sao chép và tùy biến cho mỗi trang.</p>
+          <div class="chip-row">
+            <span class="chip">Tokens</span>
+            <span class="chip">Layout</span>
+            <span class="chip">Components</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Script điều khiển chuyển Tab và cấu hình Mermaid.js -->
+    <script>
+      function switchDiagramTab(event, tabId) {
+        // Ẩn tất cả các nội dung tab bằng cách thêm class hidden-tab
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => {
+          content.classList.add('hidden-tab');
+        });
+
+        // Hủy kích hoạt tất cả các nút tab
+        const buttons = document.querySelectorAll('#diagram-tabs .tab-btn');
+        buttons.forEach(btn => {
+          btn.classList.remove('active');
+        });
+
+        // Hiển thị tab được chọn bằng cách xóa class hidden-tab
+        document.getElementById(tabId).classList.remove('hidden-tab');
+        event.currentTarget.classList.add('active');
+      }
+    </script>
+
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"Be Vietnam Pro", "Segoe UI", sans-serif',
+          fontSize: '13px',
+          primaryColor: '#fffaf2',
+          primaryBorderColor: '#e5d9c8',
+          primaryTextColor: '#1b2430',
+          lineColor: '#0f6b63',
+          arrowheadColor: '#0f6b63',
+          background: '#ffffff',
+          clusterBkg: '#fbf8f3',
+          clusterBorder: '#e5d9c8',
+          actorBkg: '#fffaf2',
+          actorBorder: '#e5d9c8',
+          actorTextColor: '#1b2430',
+          signalColor: '#0f6b63',
+          signalTextColor: '#4b5563',
+          labelBoxBkgColor: '#fbf8f3',
+          labelBoxBorderColor: '#e5d9c8',
+          loopBkgColor: '#faf6ee'
+        },
+        flowchart: { 
+          useMaxWidth: false,
+          htmlLabels: true
+        },
+        sequence: { 
+          useMaxWidth: false,
+          showSequenceNumbers: true 
+        }
+      });
+    </script>
+
+    <!-- Script sao chép mã nguồn nhanh -->
+    <script>
+      document.querySelectorAll('.btn-copy').forEach(button => {
+        button.addEventListener('click', () => {
+          // Tìm khối code-wrapper gần nhất chứa nút
+          const wrapper = button.closest('.code-wrapper');
+          if (!wrapper) return;
+          
+          const codeBlock = wrapper.querySelector('.code-block');
+          if (!codeBlock) return;
+          
+          // Lấy nội dung text trong code-block
+          const codeText = codeBlock.textContent || codeBlock.innerText;
+          
+          navigator.clipboard.writeText(codeText).then(() => {
+            const originalText = button.textContent;
+            button.textContent = 'Copied! ✓';
+            
+            // Highlight nút khi copy thành công sang màu xanh lá
+            const origBg = button.style.background;
+            const origBorder = button.style.borderColor;
+            const origColor = button.style.color;
+            
+            button.style.background = 'var(--accent-2)';
+            button.style.borderColor = 'var(--accent-2)';
+            button.style.color = '#ffffff';
+            
+            setTimeout(() => {
+              button.textContent = originalText;
+              button.style.background = origBg;
+              button.style.borderColor = origBorder;
+              button.style.color = origColor;
+            }, 2000);
+          }).catch(err => {
+            console.error('Không thể sao chép mã nguồn: ', err);
+          });
+        });
+      });
+    </script>
+
+    <!-- Script ScrollSpy cho Sidebar điều hướng tự động -->
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        const observerOptions = {
+          root: null,
+          rootMargin: '-15% 0px -75% 0px', // Trigger khi phần tử chạm vào 1/4 trên màn hình
+          threshold: 0
+        };
+
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const id = entry.target.getAttribute('id');
+              const navLink = document.querySelector(`#sidebar-nav a[href="#${id}"]`);
+              if (!navLink) return;
+
+              // Deactivate all links
+              document.querySelectorAll('#sidebar-nav a').forEach(link => {
+                link.classList.remove('active');
+              });
+              // Activate current link
+              navLink.classList.add('active');
+            }
+          });
+        }, observerOptions);
+
+        // Đăng ký theo dõi tất cả các section có ID trong content-area
+        document.querySelectorAll('.content-area .section').forEach(section => {
+          observer.observe(section);
+        });
+      });
+    </script>
+  </body>
+</html>

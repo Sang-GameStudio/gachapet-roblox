@@ -79,7 +79,7 @@ end
 function shared.DataManager.AddCoins(player, amount)
 	local data = sessionData[player.UserId]
 	if data then
-		data.Coins = math.max(0, data.Coins + amount)
+		data.Coins = math.max(0, data.Coins + amount) -- so sánh 2 số a,b trả về số lớn hơn
 		
 		-- Đồng bộ hiển thị lên Leaderstats UI của Roblox
 		local leaderstats = player:FindFirstChild("leaderstats")
@@ -122,7 +122,7 @@ function shared.DataManager.SetEquippedPet(player, petName)
 		end
 		
 		if ownsPet or petName == nil then
-			data.EquippedPet = petName
+			data.EquippedPet = petName -- thao tác tháo pet, không chọn/trang bị pet nữa
 			return true
 		end
 	end
@@ -132,19 +132,19 @@ end
 --[[
 	Hàm tải dữ liệu người chơi từ DataStore lên RAM Cache
 ]]
-local function onPlayerAdded(player)
+local function onPlayerAdded(player) 
 	local userId = player.UserId
 	local playerKey = "Player_" .. userId
 	
 	-- Tạo leaderstats để hiển thị tiền lên góc phải màn hình game Roblox mặc định
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
+	local leaderstats = Instance.new("Folder") -- hàm có sẵn trong Roblox để khởi tọa 1 đói tượng folder
+	leaderstats.Name = "leaderstats" -- bắt buộc khai báo tên như này, để kích hoạt tính năng tự vẽ bảng điểm của Roblox
+	leaderstats.Parent = player -- gắn folder này vào player
 	
-	local coinsValue = Instance.new("IntValue")
-	coinsValue.Name = "Coins"
-	coinsValue.Value = 0
-	coinsValue.Parent = leaderstats
+	local coinsValue = Instance.new("IntValue") -- khởi tạo 1 đối tượng intvalue để lưu số tiền 
+	coinsValue.Name = "Coins" -- đặt tên hiển thị cho cột coin trên bảng là "Coins"
+	coinsValue.Value = 0 -- giá trị ban đầu
+	coinsValue.Parent = leaderstats -- gắn coinsValue vào leaderstats
 
 	-- Gọi DataStore bằng pcall vì đây là API call qua internet có thể thất bại
 	local success, savedData = pcall(function()
@@ -155,7 +155,7 @@ local function onPlayerAdded(player)
 		-- Đã tìm thấy dữ liệu cũ, nạp vào RAM
 		sessionData[userId] = {
 			Coins = tonumber(savedData.Coins) or DEFAULT_DATA.Coins,
-			Inventory = savedData.Inventory or { unpack(DEFAULT_DATA.Inventory) },
+			Inventory = savedData.Inventory or { unpack(DEFAULT_DATA.Inventory) }, -- unpack: sao chép ra 1 mảng độc lập, tránh việc người chơi mới dùng chung và chỉnh sửa đè lên mảng gốc
 			EquippedPet = savedData.EquippedPet, -- Có thể nil nếu không trang bị gì
 			RarePityCount = savedData.RarePityCount or DEFAULT_DATA.RarePityCount,
 			LegendaryPityCount = savedData.LegendaryPityCount or DEFAULT_DATA.LegendaryPityCount
@@ -182,14 +182,14 @@ end
 ]]
 local function savePlayerData(player)
 	local userId = player.UserId
-	local data = sessionData[userId]
+	local data = sessionData[userId] -- lấy data của player ra
 	
 	if data then
 		local playerKey = "Player_" .. userId
 		
 		-- Sử dụng UpdateAsync vì nó an toàn hơn SetAsync trong việc tránh xung đột ghi đè
 		local success, err = pcall(function()
-			playerDataStore:UpdateAsync(playerKey, function(oldValue)
+			playerDataStore:UpdateAsync(playerKey, function(oldValue) -- dữ liệu cũ trên cloud mà updateAsync gọi đến, chuẩn bị ghi đè
 				-- Trả về dữ liệu hiện tại để ghi đè lên cloud
 				return data
 			end)
@@ -204,25 +204,23 @@ local function savePlayerData(player)
 end
 
 -- Đăng ký các sự kiện kết nối người chơi
-Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerAdded:Connect(onPlayerAdded) -- khi có player mới vào game thì load data lên: onPlayerAdded
 Players.PlayerRemoving:Connect(function(player)
-	savePlayerData(player)
-	-- Giải phóng bộ nhớ RAM cache khi người chơi thoát
-	sessionData[player.UserId] = nil
+	savePlayerData(player) -- khi player thoát ra thì lưu dữ liệu vào data store
+	sessionData[player.UserId] = nil -- Giải phóng bộ nhớ RAM cache khi người chơi thoát
 end)
 
 --[[
 	CRITICAL: Xử lý game:BindToClose() để tránh mất dữ liệu.
-	Khi chạy test trong Studio hoặc server đột ngột sập, Roblox sẽ tắt ngay lập tức.
+	Hàm tự động kích hoạt khi server bị sập đột ngột, hoặc khi bấm nút "Stop" trong Roblox Studio.
 	Hàm này đảm bảo server sẽ đứng đợi cho đến khi lưu xong toàn bộ người chơi.
 ]]
 game:BindToClose(function()
 	print("Game đang đóng! Đang lưu dữ liệu cho tất cả người chơi còn lại...")
-	for _, player in ipairs(Players:GetPlayers()) do
-		savePlayerData(player)
+	for _, player in ipairs(Players:GetPlayers()) do -- duyệt qua tất cả player đang online 
+		savePlayerData(player) -- lưu data của từng người chơi 
 	end
-	-- Đợi thêm 1s để chắc chắn các request mạng hoàn thành
-	task.wait(1)
+	task.wait(1) -- Đợi thêm 1s để chắc chắn các request mạng hoàn thành, lệnh lưu chạy bất đồng bộ, nếu không đợi, server sẽ tắt ngay  khiến các request đang bay bị hủy --> mất data
 end)
 
 local AUTOSAVE_INTERVAL = 300 -- 5 phút tự động quét 1 lần (300 giây)
@@ -232,12 +230,13 @@ local DELAY_BETWEEN_PLAYERS = 2 -- Nghỉ 2 giây giữa mỗi người chơi đ
 	Hàm chạy ngầm tự động lưu dữ liệu rải rác (Staggered Autosave)
 	Giúp phân bổ đều tải DataStore ra dòng thời gian, chống Rate Limit
 ]]
+	
 local function startAutosaveLoop()
 	task.spawn(function()
 		while true do
 			task.wait(AUTOSAVE_INTERVAL) -- Chờ đúng 5 phút rồi mới kích hoạt đợt lưu mới
 			
-			local activePlayers = Players:GetPlayers()
+			local activePlayers = Players:GetPlayers() -- lấy tất cả player đang onl trong server tại đúng khoảnh khắc đó, ném vào biến activePlayers
 			
 			for _, player in ipairs(activePlayers) do
 				-- Kiểm tra phòng hờ người chơi đã thoát trong lúc đang đợi hàng đợi
